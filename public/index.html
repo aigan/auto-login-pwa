@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<link rel="icon" href="/img/jonas-2016-300.jpg">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="import" href="/vendor/paper-input/paper-input.html" async>
+<link rel="import" href="/vendor/paper-button/paper-button.html" async>
+<script src="main.js"></script>
+<body>
+    <header>
+        <section><span id="status">Loading</span></section>
+        <spacer></spacer>
+        <section class="logged-in"><button id="logout">Logout</button></section>
+    </header>
+
+    <main class="logged-out">
+        <section class="login-alternatives">
+            <h1>You wanna log in?</h1>
+            <button id="a_login" disabled>Log in</button>
+            <button id="p_login" disabled><spinner></spinner>with Password</button>
+            <button id="g_login" disabled><spinner></spinner>with Google</button>
+            <button id="f_login" disabled>with Facebook</button>
+
+            <div class="spinner1"></div>
+        </section>
+        <form class="login-password">
+            <paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
+            <paper-input name="password" label="Password" type="password" autocomplete="current-password"></paper-input>
+            <paper-button class="submit" raised>Login</paper-button>
+            <input hidden="true" type="submit">
+        </form>
+    </main>
+    <main class="logged-in">
+        <p>It's a brand new world</p>
+        <button id="a_forget">Forget me</button> on this device
+    </main>
+
+</body>
+<style>
+ html {
+     font-size: 16px; 
+}
+ body {
+     margin: 0;
+     font-family: sans-serif;
+ }
+
+ header {
+     display: flex;
+     width: 100%;
+     background: grey;
+     min-height: 4em;
+     flex-direction: row;
+     box-sizing: border-box;
+ }
+
+ header, main {
+     padding: 0.2em 1em;
+ }
+
+ spacer {
+     flex-grow: 1;
+ }
+ 
+ .logged-in, form.login-password {
+     display: none;
+ }
+
+ 
+
+ header section {
+     display: flex;
+     flex-direction: column;
+     justify-content: center;
+ }
+
+ header button {
+     display: block;
+ }
+ 
+ button {
+     font-size: 110%;
+     padding: 0.4em 0.8em;
+ }
+ 
+ button:disabled {
+     opacity: 0.2;
+ }
+
+ .login-password {
+     text-align:center;
+     max-width: 30em;
+     margin: auto;
+ }
+
+ .login-password paper-input {
+     text-align:left;
+ }
+
+ .login-password paper-button.submit {
+     margin: 1.2em 0 0 0;
+     width: 100%;
+     color: white;
+     background: #4059A9;
+ }
+ 
+
+ spinner {
+     content: "";
+     display: inline-block;
+     width: 0;
+     height: 0;
+     border: solid 0.5em;
+     border-radius: 0.5em;
+     border-color: #0099ff transparent #0099ff transparent;
+     animation: spin 1s linear infinite;
+ }
+ @keyframes spin{
+     0% {
+         transform: rotate(0deg);
+     }
+     100% {
+         transform: rotate(360deg);
+     }
+ }
+
+ .login-alternatives button {
+     position: relative;
+ }
+
+ .login-alternatives button spinner {
+     position: absolute;
+     display: none;
+ }
+ .login-alternatives button:disabled spinner {
+     display: block;
+ }
+ .login-alternatives[cred_type=password]  button:disabled spinner {
+     display: none;
+ }
+ 
+</style>
+<script>
+ log('Start');
+
+ var statuse = fromId('status');
+ var user = null;
+ var g_ready = false;
+ var g_promise = Promise.resolve();
+ var f_ready = false;
+ var p_ready = false;
+
+ var config_promise = fetch("config.json").then( r=>r.json() );
+ 
+ var onComponentLoaded =
+ {
+     'link[rel="import"]': function(link){
+         log('Elements are upgraded!');
+         p_ready = true;
+         drawLoginWidget();
+     },
+ };
+
+ 
+ function g_login() {
+     log("Trying to login with Google");
+ }
+
+ function autoLogin() {
+     if( user.loggedin ) {
+         // User already logged in
+     } else if( user.id && user.cred_type ) {
+         // Identified but logged out. Respect that
+         statuse.innerHTML = "";
+         drawLoginWidget();
+     } else if ( !!navigator.credentials ) {
+         doLogin();
+     } else {
+         //Handle sign-in the way you did before.
+         log("No cred support");
+         statuse.innerHTML = "Your browser do not support credentials manager";
+         drawLoginWidget();
+     };
+ }
+
+ function doLogin() {
+     statuse.innerHTML="Trying to log in";
+     fromId('a_login').disabled = true;
+     
+     navigator.credentials.get({
+         password: true,
+         providers: [
+             'https://accounts.google.com',  
+             'https://www.facebook.com',
+         ]
+     }).then( navcredLogin );
+ }
+
+ function doForget() {
+     if( !!navigator.credentials )
+         navigator.credentials.requireUserMediation();
+     
+     statuse.innerHTML = "Logged out. Remeber to clear your device";
+     user.loggedin = false;
+     user.id = null;
+     user.cred_type = null;
+     Lockr.rm('user');
+     onLogout();
+ }
+ 
+ function navcredLogin( cred ) {
+     if( !cred ) {
+         log("No cred");
+         statuse.innerHTML = "No login credentials found";
+         user.cred_type = null;
+         Lockr.set('user', user);
+         drawLoginWidget();
+         return;
+     }
+
+     if( cred.type == 'password' ) {
+     
+         var form = new FormData();
+         form.append('csrf_token', 'maby');
+         cred.additionalData = form;
+
+         fetch("/app1/welcome", {
+             method: 'POST',
+             credentials: cred,
+         }).then(r => {
+             if( r.status == 200 ) {
+                 log("Login SUCCESS");
+                 statuse.innerHTML = "Login success";
+                 user.loggedin = true;
+                 user.cred_type = cred.type;
+                 user.id = cred.id;
+                 //user.name = cred.name;
+                 Lockr.set('user', user);
+                 onLogin();
+             } else {
+                 log("Login failed");
+                 statuse.innerHTML = "Login failed";
+             }
+         });
+     } else if( cred.type == 'federated' ) {
+         switch (cred.provider) {
+             case 'https://accounts.google.com':
+                 g_promise.then(function(){
+                     // Federated login using Google Sign-In  
+                     var auth2 = gapi.auth2.getAuthInstance();
+
+                     // In Google Sign-In library, you can specify an account.  
+                     // Attempt to sign in with by using `login_hint`.
+                     return auth2.signIn({  
+                         login_hint: cred.id || ''  
+                     }).then(function(profile) {
+                         log("Google Login success");
+                         log(profile);
+                     });
+                 });
+                 break;
+
+             case 'https://www.facebook.com':
+                 log("Facebook federated login");
+                 // continuation  
+                 break;
+
+             default:
+                 log("Unhandled federated provider");
+                 log(cred.provider);
+                 break;
+         }
+     }
+ }
+ 
+ function onLogin() {
+     for(var item of queryAll('header .logged-in')) item.style.display = "flex";
+     for(var item of queryAll('main.logged-in')) item.style.display = "block";
+     for(var item of queryAll('.logged-out')) item.style.display = "none";
+     query('.login-alternatives').style.display = 'block';
+     query('.login-password').style.display = 'none';
+ }
+ 
+ function onLogout() {
+     for(var item of queryAll('.logged-in')) item.style.display = "none";
+     for(var item of queryAll('header .logged-out')) item.style.display = "flex";
+     for(var item of queryAll('main.logged-out')) item.style.display = "block";
+     drawLoginWidget();
+ }
+
+ function drawLoginWidget() {
+     query('.login-alternatives').setAttribute('cred_type',user.cred_type);
+     fromId('a_login').disabled = !user.cred_type;
+     if( !user.cred_type ) {
+         fromId('p_login').disabled = !p_ready;
+         fromId('g_login').disabled = !g_ready;
+         fromId('f_login').disabled = !f_ready;
+     } else {
+         fromId('p_login').disabled = true;
+         fromId('g_login').disabled = true;
+         fromId('f_login').disabled = true;
+     }
+ }
+
+ function loginPasswordSubmit( e ) {
+     if( e ) e.preventDefault();
+     var form = query('form.login-password');
+     log("Submit login form ");
+
+     if ( !!navigator.credentials ) {
+         var cred = new PasswordCredential(form);
+         navigator.credentials.store(cred)  
+                  .then(function() {
+                      statuse.innerHTML = "Save the password for faster login next time";
+                      log("Stored creds");
+                      fetch("/app1/welcome", {
+                          method: 'POST',
+                          credentials: cred,
+                      }).then(r=>onPasswordSubmitResponse(r,cred));
+                  });
+     } else {
+         fetch("/app1/welcome", {
+             method: 'POST',
+             body: new FormData(form),
+         }).then(r=>onPasswordSubmitResponse(r,{
+             id: form.elements.username.value,
+         }));
+     }
+
+     return false;
+ }
+
+ function onPasswordSubmitResponse(r, cred) {
+     if( r.status == 200 ) {
+         log("Login SUCCESS");
+         statuse.innerHTML = "Login success";
+         user.loggedin = true;
+         user.cred_type = cred.type;
+         user.id = cred.id;
+         //user.name = cred.name;
+         log(user);
+         Lockr.set('user', user);
+         onLogin();
+     }
+     else {
+         log("Login failed");
+         statuse.innerHTML = "Login failed";
+     }
+   }
+ 
+ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
+     user = Lockr.get('user');
+
+      if( !user ) {
+          user = {
+              loggedin: false,
+              cred_type: null,
+              id: null,
+          };
+          Lockr.set('user', user);
+      }
+     log(user);
+ 
+     if( user.loggedin ) {
+         // User already logged in
+         statuse.innerHTML = "Welcome back";
+         onLogin();
+     } else if( user.id && user.cred_type ) {
+         // Identified but logged out. Respect that
+     } else if( !navigator.credentials ) {
+         statuse.innerHTML = "Your browser do not support credentials manager";
+     }
+ 
+     fromId('logout').onclick = function(){
+         // navigator.credentials.requireUserMediation();
+         statuse.innerHTML = "Logged out";
+         user.loggedin = false;
+         Lockr.set('user', user);
+         onLogout();
+     }
+
+     fromId('p_login').onclick = function(){
+         query('.login-alternatives').style.display = 'none';
+         query('.login-password').style.display = 'block';
+         query('form.login-password').onsubmit = loginPasswordSubmit;
+
+         if( user.id ) {
+             query('paper-input[name=username]').value = user.id;
+             query('paper-input[name=password]').focus();
+         } else {
+              query('paper-input[name=username]').focus();
+         }
+         
+     }
+
+     query('form.login-password .submit').onclick = loginPasswordSubmit;
+     
+     fromId('g_login').onclick = g_login;
+     
+     fromId('a_login').onclick = doLogin;
+     
+     fromId('a_forget').onclick = doForget;
+
+     log('Ready');
+     autoLogin();
+ });
+
+
+ 
+ loadScriptAsync("//apis.google.com/js/platform.js", function(){
+     // Initialise Google Sign-In
+     gapi.load('auth2', function() {
+         config_promise.then(c=>{
+             g_promise = g_promise.then(()=>{
+                 gapi.auth2.init(c.google).then(function() {
+                     log("Google login init done");
+                     g_ready = true;
+                     drawLoginWidget();
+                 });
+             });
+         });
+     });
+ });
+
+ log("Loading async");
+</script>
