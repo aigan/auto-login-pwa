@@ -148,21 +148,45 @@
 <script>
  log('Start');
 
- var user = null;
- var s = {}; // Supplier
- var g_ready = false;
- var g_promise;
- var g_provider = 'https://accounts.google.com';
- var f_ready = false;
- var p_ready = false;
-
+ var u; // User
+ var s = // Supplier
+ {
+     google: {
+         ready: false,
+         provider: 'https://accounts.google.com',
+         promise: null,
+     },
+     facebook: {
+         ready: false,
+         provider: 'https://www.facebook.com',
+     },
+     password: {
+         ready: false,
+     },
+ };
+ 
  var config_promise = fetch("config.json").then( r=>r.json() );
  
+ class User {
+     constructor(p) {
+         this.loggedin = p.loggedin || false;
+         this.id = p.id;
+         this.cred_used = p.cred_used;
+         this.s =
+         {
+             google: {},
+             facebook: {},
+             password: {},
+         }
+     }
+ }
+ 
+
  var onComponentLoaded =
  {
      'link[rel="import"]': function(link){
          log('Elements are upgraded!');
-         p_ready = true;
+         s.password.ready = true;
          drawLoginWidget();
      },
  };
@@ -201,18 +225,18 @@
      var auth2 = gapi.auth2.getAuthInstance();
      var g_user = auth2.currentUser.get();
 
-     user.loggedin = true;
-     user.id = g_user.getId();
-     user.cred_used = 'google';
+     u.loggedin = true;
+     u.id = g_user.getId();
+     u.cred_used = 'google';
      userUpdate();
 
      if(!!navigator.credentials && store_cred) {
          // Create `Credential` object for federation
          var cred = new FederatedCredential({
-             id:       user.id,
+             id:       u.id,
              name:     'Testsson',
              //             iconURL:  profile.imageUrl || DEFAULT_IMG,
-             provider: g_provider
+             provider: s.google.provider
          });
          navigator.credentials.store(cred);
      }
@@ -221,9 +245,9 @@
  }
   
  function autoLogin() {
-     if( user.loggedin ) {
+     if( u.loggedin ) {
          // User already logged in
-     } else if( user.id && user.cred_used ) {
+     } else if( u.id && u.cred_used ) {
          // Identified but logged out. Respect that
          notifyStatus("");
          drawLoginWidget();
@@ -251,9 +275,7 @@
      }
      
      notifyStatus("Logged out. Remeber to clear your device");
-     user.loggedin = false;
-     user.id = null;
-     user.cred_used = null;
+     u = new User();
      Lockr.rm('user');
      onLogout();
  }
@@ -263,15 +285,15 @@
      fromId('a_login').disabled = true;
 
      // Had to bypass callback in order to not trigger popup block
-     if( user.cred_used == 'google' ) return g_login();
+     if( u.cred_used == 'google' ) return g_login();
 
      
      navigator.credentials.get({
          password: true,
          federated: {
              providers: [
-                 g_provider,
-                 'https://www.facebook.com',
+                 s.google.provider,
+                 s.facebook.provider,
              ]
          }
      }).then( cred => navcredLogin(cred, by_click) );
@@ -281,7 +303,7 @@
      if( !cred ) {
          log("No cred");
          notifyStatus("No login credentials found");
-         user.cred_used = null;
+         u.cred_used = null;
          userUpdate();
          drawLoginWidget();
          return;
@@ -300,9 +322,9 @@
              if( r.status == 200 ) {
                  log("Login SUCCESS");
                  notifyStatus("Login success");
-                 user.loggedin = true;
-                 user.cred_used = 'password';
-                 user.id = cred.id;
+                 u.loggedin = true;
+                 u.cred_used = 'password';
+                 u.id = cred.id;
                  userUpdate();
                  onLogin();
              } else {
@@ -313,10 +335,10 @@
      } else if( cred.type == 'federated' ) {
          log("Trying federated login");
          switch (cred.provider) {
-             case g_provider:
+             case s.google.provider:
                  log("Trying Google login");
                  // Se https://developers.google.com/identity/protocols/googlescopes
-                 g_promise.then(function(){
+                 s.google.promise.then(function(){
                      // Federated login using Google Sign-In  
                      var auth2 = gapi.auth2.getAuthInstance();
 
@@ -343,13 +365,13 @@
                          // and present a login button
                          
                          notifyStatus("Hello again");
-                         user.cred_used = 'google';
+                         u.cred_used = 'google';
                          drawLoginWidget();
                      }
                  });
                  break;
 
-             case 'https://www.facebook.com':
+             case s.facebook.provider:
                  log("Facebook federated login");
                  // continuation  
                  break;
@@ -378,12 +400,12 @@
  }
 
  function drawLoginWidget() {
-     query('.login-alternatives').setAttribute('cred_used',user.cred_used);
-     fromId('a_login').disabled = !user.cred_used;
-     if( !user.cred_used ) {
-         fromId('p_login').disabled = !p_ready;
-         fromId('g_login').disabled = !g_ready;
-         fromId('f_login').disabled = !f_ready;
+     query('.login-alternatives').setAttribute('cred_used',u.cred_used);
+     fromId('a_login').disabled = !u.cred_used;
+     if( !u.cred_used ) {
+         fromId('p_login').disabled = !s.password.ready;
+         fromId('g_login').disabled = !s.google.ready;
+         fromId('f_login').disabled = !s.facebook.ready;
      } else {
          fromId('p_login').disabled = true;
          fromId('g_login').disabled = true;
@@ -423,9 +445,9 @@
      if( r.status == 200 ) {
          log("Login SUCCESS");
          notifyStatus("Login success");
-         user.loggedin = true;
-         user.cred_used = 'password';
-         user.id = cred.id;
+         u.loggedin = true;
+         u.cred_used = 'password';
+         u.id = cred.id;
          userUpdate();
          onLogin();
      }
@@ -436,15 +458,19 @@
    }
 
  function userUpdate() {
-     Lockr.set('user', user);
+     Lockr.set('user', {
+         id: u.id,
+         loggedin: u.loggedin,
+         cred_used: u.cred_used,
+     });
      onUserUpdated();
  }
  
  function onUserUpdated() {
      query('.user-info .local').innerHTML =
-     `id: ${user.id}\ncred: ${user.cred_used}`;
-     if( user.cred_used == 'google' ) {
-         g_promise.then(function(){
+     `id: ${u.id}\ncred: ${u.cred_used}`;
+     if( u.cred_used == 'google' ) {
+         s.google.promise.then(function(){
              var pre = query('.user-info .google');
              var c = "Google:";
              var auth2 = gapi.auth2.getAuthInstance();
@@ -559,23 +585,19 @@
  }
  
  loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
-     user = Lockr.get('user');
+     u = new User(Lockr.get('user'));
 
-     if( user ) {
+     if( u ) {
          onUserUpdated();
      } else {
-          user = {
-              loggedin: false,
-              cred_used: null,
-              id: null,
-          };
-          userUpdate();
-      }
+         u = new User();
+         userUpdate();
+     }
  
-     if( user.loggedin ) {
+     if( u.loggedin ) {
          notifyStatus("Welcome back");
          onLogin();
-     } else if( user.id && user.cred_used ) {
+     } else if( u.id && u.cred_used ) {
          // Identified but logged out. Respect that
      } else if( !navigator.credentials ) {
          notifyStatus("Your browser do not support credentials manager");
@@ -584,7 +606,7 @@
      fromId('logout').onclick = function(){
          // navigator.credentials.requireUserMediation();
          notifyStatus("Logged out");
-         user.loggedin = false;
+         u.loggedin = false;
          userUpdate();
          onLogout();
      }
@@ -594,8 +616,8 @@
          query('.login-password').style.display = 'block';
          query('form.login-password').onsubmit = loginPasswordSubmit;
 
-         if( user.name ) {
-             query('paper-input[name=username]').value = user.name;
+         if( u.name ) {
+             query('paper-input[name=username]').value = u.name;
              query('paper-input[name=password]').focus();
          } else {
               query('paper-input[name=username]').focus();
@@ -617,7 +639,7 @@
 
 
  // Se https://developers.google.com/identity/protocols/googlescopes
- g_promise = new Promise(function(resolve,reject){
+ s.google.promise = new Promise(function(resolve,reject){
      loadScriptAsync("//apis.google.com/js/platform.js", function(){
          gapi.load('auth2', function() {
              config_promise.then(c=>{
@@ -634,7 +656,7 @@
                  c.google.scope = 'openid';
                  gapi.auth2.init(c.google).then(function() {
                      log("Google login init done");
-                     g_ready = true;
+                     s.google.ready = true;
                      drawLoginWidget();
                      resolve(); // promise resolved
                  });
