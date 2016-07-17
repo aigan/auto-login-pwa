@@ -146,29 +146,54 @@
  
 </style>
 <script>
+ "use strict";
  log('Start');
 
+ class Supplier {
+     constructor(lib) {
+         this.lib = lib;
+         this.ready = false;
+         this.exec = null;
+         this.promise = null;
+         log("Constructing "+lib);
+     }
+
+     then(f) {
+         if(!this.promise) {
+             log("Creating promise");
+             var sup = this;
+             this.promise = new Promise(function(resolve,reject){
+                 loadScriptAsync(sup.lib, function(){
+                     log("Lib loaded. Calling sup.exec");
+                     sup.exec(resolve,reject);
+                 });
+             });
+         }
+         this.promise.then(f);
+     }
+ }
+ 
  var u; // User
  var s = // Supplier
  {
-     google: {
-         ready: false,
-         provider: 'https://accounts.google.com',
-         promise: null,
-     },
+     google: new Supplier('supplier/google.js'),
      facebook: {
          ready: false,
-         provider: 'https://www.facebook.com',
      },
      password: {
          ready: false,
      },
+//     test: new Supplier('supplier/test.js'),
  };
+
+// s.test.then(()=>log("Test loaded"));
+ 
  
  var config_promise = fetch("config.json").then( r=>r.json() );
  
  class User {
      constructor(p) {
+         if(!p) p = {};
          this.loggedin = p.loggedin || false;
          this.id = p.id;
          this.cred_used = p.cred_used;
@@ -195,6 +220,19 @@
      fromId('status').innerHTML = msg;
  }
  
+ function p_login() {
+     query('.login-alternatives').style.display = 'none';
+     query('.login-password').style.display = 'block';
+     query('form.login-password').onsubmit = loginPasswordSubmit;
+
+     if( u.name ) {
+         query('paper-input[name=username]').value = u.name;
+         query('paper-input[name=password]').focus();
+     } else {
+         query('paper-input[name=username]').focus();
+     }
+ }
+
  function g_login( store_cred ) {
      log("Trying to login with Google");
      var auth2 = gapi.auth2.getAuthInstance();
@@ -236,7 +274,7 @@
              id:       u.id,
              name:     'Testsson',
              //             iconURL:  profile.imageUrl || DEFAULT_IMG,
-             provider: s.google.provider
+             provider: 'google'
          });
          navigator.credentials.store(cred);
      }
@@ -284,16 +322,21 @@
      notifyStatus("Trying to log in");
      fromId('a_login').disabled = true;
 
-     // Had to bypass callback in order to not trigger popup block
      if( u.cred_used == 'google' ) return g_login();
-
+     if( u.cred_used == 'password' ) return p_login();
      
+     if(!navigator.credentials) {
+         notifyStatus("Your browser do not support credentials manager");
+         u.cred_used = null;
+         drawLoginWidget();
+     }
+
      navigator.credentials.get({
          password: true,
          federated: {
              providers: [
-                 s.google.provider,
-                 s.facebook.provider,
+                 'google',
+                 'facebook',
              ]
          }
      }).then( cred => navcredLogin(cred, by_click) );
@@ -335,10 +378,10 @@
      } else if( cred.type == 'federated' ) {
          log("Trying federated login");
          switch (cred.provider) {
-             case s.google.provider:
+             case 'google':
                  log("Trying Google login");
                  // Se https://developers.google.com/identity/protocols/googlescopes
-                 s.google.promise.then(function(){
+                 s.google.then(function(){
                      // Federated login using Google Sign-In  
                      var auth2 = gapi.auth2.getAuthInstance();
 
@@ -371,7 +414,7 @@
                  });
                  break;
 
-             case s.facebook.provider:
+             case 'facebook':
                  log("Facebook federated login");
                  // continuation  
                  break;
@@ -470,7 +513,7 @@
      query('.user-info .local').innerHTML =
      `id: ${u.id}\ncred: ${u.cred_used}`;
      if( u.cred_used == 'google' ) {
-         s.google.promise.then(function(){
+         s.google.then(function(){
              var pre = query('.user-info .google');
              var c = "Google:";
              var auth2 = gapi.auth2.getAuthInstance();
@@ -611,19 +654,7 @@
          onLogout();
      }
 
-     fromId('p_login').onclick = function(){
-         query('.login-alternatives').style.display = 'none';
-         query('.login-password').style.display = 'block';
-         query('form.login-password').onsubmit = loginPasswordSubmit;
-
-         if( u.name ) {
-             query('paper-input[name=username]').value = u.name;
-             query('paper-input[name=password]').focus();
-         } else {
-              query('paper-input[name=username]').focus();
-         }
-         
-     }
+     fromId('p_login').onclick = p_login;
 
      query('form.login-password .submit').onclick = loginPasswordSubmit;
      
@@ -637,33 +668,5 @@
      autoLogin();
  });
 
-
- // Se https://developers.google.com/identity/protocols/googlescopes
- s.google.promise = new Promise(function(resolve,reject){
-     loadScriptAsync("//apis.google.com/js/platform.js", function(){
-         gapi.load('auth2', function() {
-             config_promise.then(c=>{
-//                 c.google.fetch_basic_profile = false;
-                 c.google.fetch_basic_profile = false;
-
-                 // Ask for as little as possible. But we really could
-                 // need the gmail address for credentials api
-                 //auto-login. We'll ask for email later.
-
-//                 c.google.scope = 'https://www.googleapis.com/auth/plus.login';
-//                 c.google.scope = 'https://www.googleapis.com/auth/plus.me';
-//                 c.google.scope = 'profile';
-                 c.google.scope = 'openid';
-                 gapi.auth2.init(c.google).then(function() {
-                     log("Google login init done");
-                     s.google.ready = true;
-                     drawLoginWidget();
-                     resolve(); // promise resolved
-                 });
-             });
-         });
-     });
- });
-     
  log("Loading async");
 </script>
