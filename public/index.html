@@ -31,6 +31,13 @@
     <main class="logged-in">
         <p>It's a brand new world</p>
         <button id="a_forget">Forget me</button> on this device
+
+        <section class="user-info">
+            <pre class="local"></pre>
+            <pre class="password"></pre>
+            <pre class="google"></pre>
+            <pre class="facebook"></pre>
+        </section>
     </main>
 
 </body>
@@ -142,6 +149,7 @@
  log('Start');
 
  var user = null;
+ var s = {}; // Supplier
  var g_ready = false;
  var g_promise;
  var g_provider = 'https://accounts.google.com';
@@ -175,6 +183,7 @@
          onGoogleLoginSuccess();
      } else {
          notifyStatus("Signing in with Google");
+         // Se https://developers.google.com/identity/protocols/googlescopes
          auth2.signIn({
              prompt:'select_account'
              // prompt only activated if explicitly signed out
@@ -195,9 +204,8 @@
      user.loggedin = true;
      user.id = g_user.getId();
      user.cred_used = 'google';
-     Lockr.set('user', user);
+     userUpdate();
 
-     log("User id: %s", user.id);
      if(!!navigator.credentials && store_cred) {
          // Create `Credential` object for federation
          var cred = new FederatedCredential({
@@ -211,32 +219,7 @@
 
      onLogin();
  }
- 
- 
- function g_user_info() {
-     var auth2 = gapi.auth2.getAuthInstance();
-     var g_user = auth2.currentUser.get();
-     log("GoogleUser id: %s", g_user.getId());
-     if( g_user.isSignedIn() )
-         log("is signed in");
-     log("App domain: %s", g_user.getHostedDomain());
-     log("Granted scopes: %s", g_user.getGrantedScopes());
-
-     var g_profile;
-     if( g_profile = g_user.getBasicProfile() ) {
-         log("Profile id: %s", g_profile.getId());
-         log("Profile name %s", g_profile.getName());
-         log("Profile given name: %s", g_profile.getGivenName());
-         log("Profile family name: %s", g_profile.getFamilyName());
-         log("Profile image url: %s", g_profile.getImageUrl());
-         log("Profile email: %s", g_profile.getEmail());
-     }
-
-     log( g_user.getAuthResponse() );
-
-//     g_user.grant({scope:'email'}).then(log,log);
- }
- 
+  
  function autoLogin() {
      if( user.loggedin ) {
          // User already logged in
@@ -270,7 +253,6 @@
      notifyStatus("Logged out. Remeber to clear your device");
      user.loggedin = false;
      user.id = null;
-     user.name = null;
      user.cred_used = null;
      Lockr.rm('user');
      onLogout();
@@ -300,7 +282,7 @@
          log("No cred");
          notifyStatus("No login credentials found");
          user.cred_used = null;
-         Lockr.set('user', user);
+         userUpdate();
          drawLoginWidget();
          return;
      }
@@ -321,8 +303,7 @@
                  user.loggedin = true;
                  user.cred_used = 'password';
                  user.id = cred.id;
-                 user.name = cred.name || cred.id;
-                 Lockr.set('user', user);
+                 userUpdate();
                  onLogin();
              } else {
                  log("Login failed");
@@ -334,6 +315,7 @@
          switch (cred.provider) {
              case g_provider:
                  log("Trying Google login");
+                 // Se https://developers.google.com/identity/protocols/googlescopes
                  g_promise.then(function(){
                      // Federated login using Google Sign-In  
                      var auth2 = gapi.auth2.getAuthInstance();
@@ -444,9 +426,7 @@
          user.loggedin = true;
          user.cred_used = 'password';
          user.id = cred.id;
-         user.name = cred.name || cred.id;
-         log(user);
-         Lockr.set('user', user);
+         userUpdate();
          onLogin();
      }
      else {
@@ -454,19 +434,143 @@
          notifyStatus("Login failed");
      }
    }
+
+ function userUpdate() {
+     Lockr.set('user', user);
+     onUserUpdated();
+ }
+ 
+ function onUserUpdated() {
+     query('.user-info .local').innerHTML =
+     `id: ${user.id}\ncred: ${user.cred_used}`;
+     if( user.cred_used == 'google' ) {
+         g_promise.then(function(){
+             var pre = query('.user-info .google');
+             var c = "Google:";
+             var auth2 = gapi.auth2.getAuthInstance();
+             var g_user = auth2.currentUser.get();
+
+             var online = g_user.isSignedIn();
+             if( online )
+                 c += "\nonline";
+             else
+                 c += "\noffline";
+             c += "\nGoogleUser id: "+g_user.getId();
+
+             var scopes = g_user.getGrantedScopes();
+             if( scopes ) {
+                 c += "\nScopes";
+                 for(let scope of scopes.split(' ') ){
+                     c+= "\n + "+scope.match(/[^\/]+$/);
+                 }
+//                 c += "\n"+scopes;
+             }
+
+             var has_email = ( g_user.hasGrantedScopes('https://www.googleapis.com/auth/userinfo.email') || g_user.hasGrantedScopes('userinfo.email') );
+
+             if( has_email ) {
+                 //                 get_email.then(e=>{ c += "\nEmail: "+e });
+             }
+             
+             
+             var g_profile= g_user.getBasicProfile();
+             if( g_profile ) {
+                 c += "\nProfile";
+                 c += "\n  name: "+ g_profile.getName();
+                 c += "\n  given name: "+ g_profile.getGivenName();
+                 c += "\n  family name: "+ g_profile.getFamilyName();
+//                 c += "\n  image url: "+ g_profile.getImageUrl();
+                 c += "\n  email: "+ g_profile.getEmail();
+             } else {
+                 // google_get_userinfo.then(i=>{ c += "\nInfo: "+i });
+                 google_get_userinfo();
+             }
+
+             var auth = g_user.getAuthResponse();
+             if( auth && online ) {
+                 c += "\nIssued at "+new Date(auth.first_issued_at);
+                 c += "\nExpires at "+new Date(auth.expires_at);
+                 c += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
+                 
+                 c += "\n"+JSON.stringify(auth);
+//                 c += "\nProfile name: "+ g_profile.getName();
+             }
+
+             
+             pre.innerHTML = c +"\n\n";
+
+             if( online ) {
+                 var t_revoke = document.createElement('button');
+                 t_revoke.innerHTML = "Revoke";
+                 t_revoke.onclick = function(){
+                     g_user.disconnect().then( onUserUpdated );
+                 };
+                 pre.appendChild(t_revoke);
+
+                 
+                 var t_email = document.createElement('button');
+                 t_email.innerHTML = "Google email";
+                 t_email.onclick = function(){
+                     g_user.grant({scope:'email'}).then(s=>{
+                              onUserUpdated();
+                     }, f=>{
+                         log("Failed");
+                         notifyStatus("I thought you liked me...");
+                     });
+                 }
+                 pre.appendChild(t_email);
+             }
+
+             // Se https://developers.google.com/identity/protocols/googlescopes
+             if( !online ) {
+                 var t_login = document.createElement('button');
+                 t_login.innerHTML = "Login";
+                 t_login.onclick = function(){
+                     auth2.signIn({
+                         scope: 'openid',
+                         login_hint: 'jonas.liljegren@gmail.com',
+                     }).then(s => {
+                         notifyStatus("Added email access");
+                         onGoogleLoginSuccess(1);
+                     }, f=>{
+                         log("Failed");
+                         notifyStatus("You denied access to Google login");
+                     });
+                 };
+                 pre.appendChild(t_login);
+             }
+         });
+     }
+ }
+
+ function google_get_userinfo() {
+     log("gapi load client");
+     gapi.load('client', function(){
+         log("Client loaded");
+         gapi.client.load('oauth2', 'v2', function(){
+             log("Client oauth2 loaded");
+             gapi.client.oauth2.userinfo.get().execute(function(resp) {
+                 log("Oauth2 response");
+                 log(resp);
+             });
+         });
+
+     });
+ }
  
  loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
      user = Lockr.get('user');
 
-      if( !user ) {
+     if( user ) {
+         onUserUpdated();
+     } else {
           user = {
               loggedin: false,
               cred_used: null,
               id: null,
           };
-          Lockr.set('user', user);
+          userUpdate();
       }
-     log(user);
  
      if( user.loggedin ) {
          notifyStatus("Welcome back");
@@ -481,7 +585,7 @@
          // navigator.credentials.requireUserMediation();
          notifyStatus("Logged out");
          user.loggedin = false;
-         Lockr.set('user', user);
+         userUpdate();
          onLogout();
      }
 
@@ -512,17 +616,22 @@
  });
 
 
+ // Se https://developers.google.com/identity/protocols/googlescopes
  g_promise = new Promise(function(resolve,reject){
      loadScriptAsync("//apis.google.com/js/platform.js", function(){
          gapi.load('auth2', function() {
              config_promise.then(c=>{
+//                 c.google.fetch_basic_profile = false;
                  c.google.fetch_basic_profile = false;
 
                  // Ask for as little as possible. But we really could
                  // need the gmail address for credentials api
                  //auto-login. We'll ask for email later.
 
-                 c.google.scope = 'profile';
+//                 c.google.scope = 'https://www.googleapis.com/auth/plus.login';
+//                 c.google.scope = 'https://www.googleapis.com/auth/plus.me';
+//                 c.google.scope = 'profile';
+                 c.google.scope = 'openid';
                  gapi.auth2.init(c.google).then(function() {
                      log("Google login init done");
                      g_ready = true;
