@@ -5,668 +5,604 @@
 <link rel="import" href="/vendor/paper-button/paper-button.html" async>
 <script src="main.js"></script>
 <body>
-    <header>
-        <section><span id="status">Loading</span></section>
-        <spacer></spacer>
-        <section class="logged-in"><button id="logout">Logout</button></section>
-    </header>
+	<header>
+		<section><span id="status">Loading</span></section>
+		<spacer></spacer>
+		<section class="logged-in"><button id="logout">Logout</button></section>
+	</header>
 
-    <main class="logged-out">
-        <section class="login-alternatives">
-            <h1>You wanna log in?</h1>
-            <button id="a_login" disabled>Log in</button>
-            <button id="p_login" disabled><spinner></spinner>with Password</button>
-            <button id="g_login" disabled><spinner></spinner>with Google</button>
-            <button id="f_login" disabled>with Facebook</button>
+	<main class="logged-out">
+		<section class="login-alternatives">
+			<h1>You wanna log in?</h1>
+			<button id="a_login" disabled>Log in</button>
+			<button id="p_login" disabled><spinner></spinner>with Password</button>
+			<button id="g_login" disabled><spinner></spinner>with Google</button>
+			<button id="f_login" disabled>with Facebook</button>
 
-            <div class="spinner1"></div>
-        </section>
-        <form class="login-password">
-            <paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
-            <paper-input name="password" label="Password" type="password" autocomplete="current-password"></paper-input>
-            <paper-button class="submit" raised>Login</paper-button>
-            <input hidden="true" type="submit">
-        </form>
-    </main>
-    <main class="logged-in">
-        <p>It's a brand new world</p>
-        <button id="a_forget">Forget me</button> on this device
+			<div class="spinner1"></div>
+		</section>
+		<form class="login-password">
+			<paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
+			<paper-input name="password" label="Password" type="password" autocomplete="current-password"></paper-input>
+			<paper-button class="submit" raised>Login</paper-button>
+			<input hidden="true" type="submit">
+		</form>
+	</main>
+	<main class="logged-in">
+		<p>It's a brand new world</p>
+		<button id="a_forget">Forget me</button> on this device
 
-        <section class="user-info">
-            <pre class="local"></pre>
-            <pre class="password"></pre>
-            <pre class="google"></pre>
-            <pre class="facebook"></pre>
-        </section>
-    </main>
+		<section class="user-info">
+			<pre class="local"></pre>
+			<pre class="password"></pre>
+			<pre class="google"></pre>
+			<pre class="facebook"></pre>
+		</section>
+	</main>
 
 </body>
 <style>
- html {
-     font-size: 16px; 
+html {
+	font-size: 16px; 
 }
- body {
-     margin: 0;
-     font-family: sans-serif;
- }
+body {
+	margin: 0;
+	font-family: sans-serif;
+}
 
- header {
-     display: flex;
-     width: 100%;
-     background: grey;
-     min-height: 4em;
-     flex-direction: row;
-     box-sizing: border-box;
- }
+header {
+	display: flex;
+	width: 100%;
+	background: grey;
+	min-height: 4em;
+	flex-direction: row;
+	box-sizing: border-box;
+}
 
- header, main {
-     padding: 0.2em 1em;
- }
+header, main {
+	padding: 0.2em 1em;
+}
 
- spacer {
-     flex-grow: 1;
- }
- 
- .logged-in, form.login-password {
-     display: none;
- }
+spacer {
+	flex-grow: 1;
+}
 
- 
+.logged-in, form.login-password {
+	display: none;
+}
 
- header section {
-     display: flex;
-     flex-direction: column;
-     justify-content: center;
- }
 
- header button {
-     display: block;
- }
- 
- button {
-     font-size: 110%;
-     padding: 0.4em 0.8em;
- }
- 
- button:disabled {
-     opacity: 0.2;
- }
 
- .login-password {
-     text-align:center;
-     max-width: 30em;
-     margin: auto;
- }
+header section {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
 
- .login-password paper-input {
-     text-align:left;
- }
+header button {
+	display: block;
+}
 
- .login-password paper-button.submit {
-     margin: 1.2em 0 0 0;
-     width: 100%;
-     color: white;
-     background: #4059A9;
- }
- 
+button {
+	font-size: 110%;
+	padding: 0.4em 0.8em;
+}
 
- spinner {
-     content: "";
-     display: inline-block;
-     width: 0;
-     height: 0;
-     border: solid 0.5em;
-     border-radius: 0.5em;
-     border-color: #0099ff transparent #0099ff transparent;
-     animation: spin 1s linear infinite;
- }
- @keyframes spin{
-     0% {
-         transform: rotate(0deg);
-     }
-     100% {
-         transform: rotate(360deg);
-     }
- }
+button:disabled {
+	opacity: 0.2;
+}
 
- .login-alternatives button {
-     position: relative;
- }
+.login-password {
+	text-align:center;
+	max-width: 30em;
+	margin: auto;
+}
 
- .login-alternatives button spinner {
-     position: absolute;
-     display: none;
- }
- .login-alternatives button:disabled spinner {
-     display: block;
- }
- .login-alternatives[cred_used]  button:disabled spinner {
-     display: none;
- }
- 
+.login-password paper-input {
+	text-align:left;
+}
+
+.login-password paper-button.submit {
+	margin: 1.2em 0 0 0;
+	width: 100%;
+	color: white;
+	background: #4059A9;
+}
+
+
+spinner {
+	content: "";
+	display: inline-block;
+	width: 0;
+	height: 0;
+	border: solid 0.5em;
+	border-radius: 0.5em;
+	border-color: #0099ff transparent #0099ff transparent;
+	animation: spin 1s linear infinite;
+}
+@keyframes spin{
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.login-alternatives button {
+	position: relative;
+}
+
+.login-alternatives button spinner {
+	position: absolute;
+	display: none;
+}
+.login-alternatives button:disabled spinner {
+	display: block;
+}
+.login-alternatives[cred_used]	button:disabled spinner {
+	display: none;
+}
+
 </style>
 <script>
- "use strict";
- log('Start');
+"use strict";
+log('Start');
 
- class Supplier {
-     constructor(lib) {
-         this.lib = lib;
-         this.ready = false;
-         this.exec = null;
-         this.promise = null;
-         log("Constructing "+lib);
-     }
+class Supplier {
+	constructor(lib) {
+		this.lib = lib;
+		this.ready = false;
+		this.exec = null;
+		this.promise = null;
+		log("Constructing "+lib);
+	}
 
-     then(f) {
-         if(!this.promise) {
-             log("Creating promise");
-             var sup = this;
-             this.promise = new Promise(function(resolve,reject){
-                 loadScriptAsync(sup.lib, function(){
-                     log("Lib loaded. Calling sup.exec");
-                     sup.exec(resolve,reject);
-                 });
-             });
-         }
-         this.promise.then(f);
-     }
- }
- 
- var u; // User
- var s = // Supplier
- {
-     google: new Supplier('supplier/google.js'),
-     facebook: {
-         ready: false,
-     },
-     password: {
-         ready: false,
-     },
-//     test: new Supplier('supplier/test.js'),
- };
+	then(f) {
+		if(!this.promise) {
+			log("Creating promise");
+			var sup = this;
+			this.promise = new Promise(function(resolve,reject){
+				loadScriptAsync(sup.lib, function(){
+					log("Lib loaded. Calling sup.exec");
+					sup.exec(resolve,reject);
+				});
+			});
+		}
+		this.promise.then(f);
+	}
+}
+
+var u; // User
+var s = // Supplier
+{
+	google: new Supplier('supplier/google.js'),
+	facebook: {
+		ready: false,
+	},
+	password: {
+		ready: false,
+	},
+	//		 test: new Supplier('supplier/test.js'),
+};
 
 // s.test.then(()=>log("Test loaded"));
- 
- 
- var config_promise = fetch("config.json").then( r=>r.json() );
- 
- class User {
-     constructor(p) {
-         if(!p) p = {};
-         this.loggedin = p.loggedin || false;
-         this.id = p.id;
-         this.cred_used = p.cred_used;
-         this.s =
-         {
-             google: {},
-             facebook: {},
-             password: {},
-         }
-     }
- }
- 
 
- var onComponentLoaded =
- {
-     'link[rel="import"]': function(link){
-         log('Elements are upgraded!');
-         s.password.ready = true;
-         drawLoginWidget();
-     },
- };
 
- function notifyStatus(msg) {
-     fromId('status').innerHTML = msg;
- }
- 
- function p_login() {
-     query('.login-alternatives').style.display = 'none';
-     query('.login-password').style.display = 'block';
-     query('form.login-password').onsubmit = loginPasswordSubmit;
+var config_promise = fetch("config.json").then( r=>r.json() );
 
-     if( u.name ) {
-         query('paper-input[name=username]').value = u.name;
-         query('paper-input[name=password]').focus();
-     } else {
-         query('paper-input[name=username]').focus();
-     }
- }
+class User {
+	constructor(p) {
+		if(!p) p = {};
+		this.loggedin = p.loggedin || false;
+		this.id = p.id;
+		this.cred_used = p.cred_used;
+		this.s =
+		{
+			google: {},
+			facebook: {},
+			password: {},
+		}
+	}
+}
 
- function g_login( store_cred ) {
-     log("Trying to login with Google");
-     var auth2 = gapi.auth2.getAuthInstance();
-//     log( auth2 );
-     if( auth2.isSignedIn.get() ) {
-//         g_user_info();
-//         notifyStatus("Revoking all from Google");
-//         auth2.disconnect();
-//         log('Already signed in with Google');
-         onGoogleLoginSuccess();
-     } else {
-         notifyStatus("Signing in with Google");
-         // Se https://developers.google.com/identity/protocols/googlescopes
-         auth2.signIn({
-             prompt:'select_account'
-             // prompt only activated if explicitly signed out
-         }).then(s => onGoogleLoginSuccess(store_cred), f=>{
-             log("Failed");
-             notifyStatus("You denied access to Google login");
-         });
-     }
- }
 
- function onGoogleLoginSuccess(store_cred) {
-     log("Signed in");
-     notifyStatus("Signed in with Google");
+var onComponentLoaded =
+{
+	'link[rel="import"]': function(link){
+		log('Elements are upgraded!');
+		s.password.ready = true;
+		drawLoginWidget();
+	},
+};
 
-     var auth2 = gapi.auth2.getAuthInstance();
-     var g_user = auth2.currentUser.get();
+function notifyStatus(msg) {
+	fromId('status').innerHTML = msg;
+}
 
-     u.loggedin = true;
-     u.id = g_user.getId();
-     u.cred_used = 'google';
-     userUpdate();
+function p_login() {
+	query('.login-alternatives').style.display = 'none';
+	query('.login-password').style.display = 'block';
+	query('form.login-password').onsubmit = loginPasswordSubmit;
 
-     if(!!navigator.credentials && store_cred) {
-         // Create `Credential` object for federation
-         var cred = new FederatedCredential({
-             id:       u.id,
-             name:     'Testsson',
-             //             iconURL:  profile.imageUrl || DEFAULT_IMG,
-             provider: 'google'
-         });
-         navigator.credentials.store(cred);
-     }
+	if( u.name ) {
+		query('paper-input[name=username]').value = u.name;
+		query('paper-input[name=password]').focus();
+	} else {
+		query('paper-input[name=username]').focus();
+	}
+}
 
-     onLogin();
- }
-  
- function autoLogin() {
-     if( u.loggedin ) {
-         // User already logged in
-     } else if( u.id && u.cred_used ) {
-         // Identified but logged out. Respect that
-         notifyStatus("");
-         drawLoginWidget();
-     } else if ( !!navigator.credentials ) {
-         a_login();
-     } else {
-         //Handle sign-in the way you did before.
-         log("No cred support");
-         notifyStatus("Your browser do not support credentials manager");
-         drawLoginWidget();
-     };
- }
+function autoLogin() {
+	if( u.loggedin ) {
+		// User already logged in
+	} else if( u.id && u.cred_used ) {
+		// Identified but logged out. Respect that
+		notifyStatus("");
+		drawLoginWidget();
+	} else if ( !!navigator.credentials ) {
+		a_login();
+	} else {
+		//Handle sign-in the way you did before.
+		log("No cred support");
+		notifyStatus("Your browser do not support credentials manager");
+		drawLoginWidget();
+	};
+}
 
- function doForget() {
-     if( !!navigator.credentials )
-         navigator.credentials.requireUserMediation();
+function doForget() {
+	if( !!navigator.credentials )
+		navigator.credentials.requireUserMediation();
 
-     var auth2 = gapi.auth2.getAuthInstance();
-     if( auth2 ) {
-         auth2.signOut().then(function () {
-             console.log('User signed out from Google');
-             // Only effective with auth2.signIn({prompt:'select_account'})
-             auth2.disconnect();
-         });
-     }
-     
-     notifyStatus("Logged out. Remeber to clear your device");
-     u = new User();
-     Lockr.rm('user');
-     onLogout();
- }
- 
- function a_login(by_click) {
-     notifyStatus("Trying to log in");
-     fromId('a_login').disabled = true;
+	var auth2 = gapi.auth2.getAuthInstance();
+	if( auth2 ) {
+		auth2.signOut().then(function () {
+			console.log('User signed out from Google');
+			// Only effective with auth2.signIn({prompt:'select_account'})
+			auth2.disconnect();
+		});
+	}
+	
+	notifyStatus("Logged out. Remeber to clear your device");
+	u = new User();
+	Lockr.rm('user');
+	onLogout();
+}
 
-     if( u.cred_used == 'google' ) return g_login();
-     if( u.cred_used == 'password' ) return p_login();
-     
-     if(!navigator.credentials) {
-         notifyStatus("Your browser do not support credentials manager");
-         u.cred_used = null;
-         drawLoginWidget();
-     }
+function a_login(by_click) {
+	notifyStatus("Trying to log in");
+	fromId('a_login').disabled = true;
 
-     navigator.credentials.get({
-         password: true,
-         federated: {
-             providers: [
-                 'google',
-                 'facebook',
-             ]
-         }
-     }).then( cred => navcredLogin(cred, by_click) );
- }
+	if( u.cred_used == 'google' ) return s.google.login();
+	if( u.cred_used == 'password' ) return p_login();
+	
+	if(!navigator.credentials) {
+		notifyStatus("Your browser do not support credentials manager");
+		u.cred_used = null;
+		drawLoginWidget();
+	}
 
- function navcredLogin( cred, by_click ) {
-     if( !cred ) {
-         log("No cred");
-         notifyStatus("No login credentials found");
-         u.cred_used = null;
-         userUpdate();
-         drawLoginWidget();
-         return;
-     }
+	navigator.credentials.get({
+		password: true,
+		federated: {
+			providers: [
+				'google',
+				'facebook',
+			]
+		}
+	}).then( cred => navcredLogin(cred, by_click) );
+}
 
-     if( cred.type == 'password' ) {
-     
-         var form = new FormData();
-         form.append('csrf_token', 'maby');
-         cred.additionalData = form;
+function navcredLogin( cred, by_click ) {
+	if( !cred ) {
+		log("No cred");
+		notifyStatus("No login credentials found");
+		u.cred_used = null;
+		userUpdate();
+		drawLoginWidget();
+		return;
+	}
 
-         fetch("/app1/welcome", {
-             method: 'POST',
-             credentials: cred,
-         }).then(r => {
-             if( r.status == 200 ) {
-                 log("Login SUCCESS");
-                 notifyStatus("Login success");
-                 u.loggedin = true;
-                 u.cred_used = 'password';
-                 u.id = cred.id;
-                 userUpdate();
-                 onLogin();
-             } else {
-                 log("Login failed");
-                 notifyStatus("Login failed");
-             }
-         });
-     } else if( cred.type == 'federated' ) {
-         log("Trying federated login");
-         switch (cred.provider) {
-             case 'google':
-                 log("Trying Google login");
-                 // Se https://developers.google.com/identity/protocols/googlescopes
-                 s.google.then(function(){
-                     // Federated login using Google Sign-In  
-                     var auth2 = gapi.auth2.getAuthInstance();
+	if( cred.type == 'password' ) {
+		
+		var form = new FormData();
+		form.append('csrf_token', 'maby');
+		cred.additionalData = form;
 
-                     // In Google Sign-In library, you can specify an account.  
-                     // Attempt to sign in with by using `login_hint`.
-                     log("Doing Google login");
-                     if( auth2.isSignedIn.get() ) {
-                         log("Already logged in");
-                         onGoogleLoginSuccess();
-                     } else if( cred.email || by_click ) {
-                         // browser will block popup
-                         // must specify gmail as login_hint
-                         auth2.signIn({  
-                             //  login_hint: cred.id || ''
-                         }).then(function(profile) {
-                             log("Google Login success");
-                             onGoogleLoginSuccess();
-                         }, function(f){
-                             log("Failed");
-                             notifyStatus("You denied access to Google login");
-                         });
-                     } else {
-                         // Can't avoid popup block. Pretend all is ok
-                         // and present a login button
-                         
-                         notifyStatus("Hello again");
-                         u.cred_used = 'google';
-                         drawLoginWidget();
-                     }
-                 });
-                 break;
+		fetch("/app1/welcome", {
+			method: 'POST',
+			credentials: cred,
+		}).then(r => {
+			if( r.status == 200 ) {
+				log("Login SUCCESS");
+				notifyStatus("Login success");
+				u.loggedin = true;
+				u.cred_used = 'password';
+				u.id = cred.id;
+				userUpdate();
+				onLogin();
+			} else {
+				log("Login failed");
+				notifyStatus("Login failed");
+			}
+		});
+	} else if( cred.type == 'federated' ) {
+		log("Trying federated login");
+		switch (cred.provider) {
+			case 'google':
+				log("Trying Google login");
+				// Se https://developers.google.com/identity/protocols/googlescopes
+				s.google.then(function(){
+					// Federated login using Google Sign-In	 
+					var auth2 = gapi.auth2.getAuthInstance();
 
-             case 'facebook':
-                 log("Facebook federated login");
-                 // continuation  
-                 break;
+					// In Google Sign-In library, you can specify an account.	 
+					// Attempt to sign in with by using `login_hint`.
+					log("Doing Google login");
+					if( auth2.isSignedIn.get() ) {
+						log("Already logged in");
+						s.google.onLoginSuccess();
+					} else if( cred.email || by_click ) {
+						// browser will block popup
+						// must specify gmail as login_hint
+						auth2.signIn({	
+							//	login_hint: cred.id || ''
+						}).then(function(profile) {
+							log("Google Login success");
+							s.google.onLoginSuccess();
+						}, function(f){
+							log("Failed");
+							notifyStatus("You denied access to Google login");
+						});
+					} else {
+						// Can't avoid popup block. Pretend all is ok
+						// and present a login button
+						
+						notifyStatus("Hello again");
+						u.cred_used = 'google';
+						drawLoginWidget();
+					}
+				});
+				break;
 
-             default:
-                 log("Unhandled federated provider");
-                 log(cred.provider);
-                 break;
-         }
-     }
- }
- 
- function onLogin() {
-     for(var item of queryAll('header .logged-in')) item.style.display = "flex";
-     for(var item of queryAll('main.logged-in')) item.style.display = "block";
-     for(var item of queryAll('.logged-out')) item.style.display = "none";
-     query('.login-alternatives').style.display = 'block';
-     query('.login-password').style.display = 'none';
- }
- 
- function onLogout() {
-     for(var item of queryAll('.logged-in')) item.style.display = "none";
-     for(var item of queryAll('header .logged-out')) item.style.display = "flex";
-     for(var item of queryAll('main.logged-out')) item.style.display = "block";
-     drawLoginWidget();
- }
+			case 'facebook':
+				log("Facebook federated login");
+				// continuation	 
+				break;
 
- function drawLoginWidget() {
-     query('.login-alternatives').setAttribute('cred_used',u.cred_used);
-     fromId('a_login').disabled = !u.cred_used;
-     if( !u.cred_used ) {
-         fromId('p_login').disabled = !s.password.ready;
-         fromId('g_login').disabled = !s.google.ready;
-         fromId('f_login').disabled = !s.facebook.ready;
-     } else {
-         fromId('p_login').disabled = true;
-         fromId('g_login').disabled = true;
-         fromId('f_login').disabled = true;
-     }
- }
+			default:
+				log("Unhandled federated provider");
+				log(cred.provider);
+				break;
+		}
+	}
+}
 
- function loginPasswordSubmit( e ) {
-     if( e ) e.preventDefault();
-     var form = query('form.login-password');
-     log("Submit login form ");
+function onLogin() {
+	for(var item of queryAll('header .logged-in')) item.style.display = "flex";
+	for(var item of queryAll('main.logged-in')) item.style.display = "block";
+	for(var item of queryAll('.logged-out')) item.style.display = "none";
+	query('.login-alternatives').style.display = 'block';
+	query('.login-password').style.display = 'none';
+}
 
-     if ( !!navigator.credentials ) {
-         var cred = new PasswordCredential(form);
-         navigator.credentials.store(cred)  
-                  .then(function() {
-                      notifyStatus("Save the password for faster login next time");
-                      log("Stored creds");
-                      fetch("/app1/welcome", {
-                          method: 'POST',
-                          credentials: cred,
-                      }).then(r=>onPasswordSubmitResponse(r,cred));
-                  });
-     } else {
-         fetch("/app1/welcome", {
-             method: 'POST',
-             body: new FormData(form),
-         }).then(r=>onPasswordSubmitResponse(r,{
-             id: form.elements.username.value,
-         }));
-     }
+function onLogout() {
+	for(var item of queryAll('.logged-in')) item.style.display = "none";
+	for(var item of queryAll('header .logged-out')) item.style.display = "flex";
+	for(var item of queryAll('main.logged-out')) item.style.display = "block";
+	drawLoginWidget();
+}
 
-     return false;
- }
+function drawLoginWidget() {
+	query('.login-alternatives').setAttribute('cred_used',u.cred_used);
+	fromId('a_login').disabled = !u.cred_used;
+	if( !u.cred_used ) {
+		fromId('p_login').disabled = !s.password.ready;
+		fromId('g_login').disabled = !s.google.ready;
+		fromId('f_login').disabled = !s.facebook.ready;
+	} else {
+		fromId('p_login').disabled = true;
+		fromId('g_login').disabled = true;
+		fromId('f_login').disabled = true;
+	}
+}
 
- function onPasswordSubmitResponse(r, cred) {
-     if( r.status == 200 ) {
-         log("Login SUCCESS");
-         notifyStatus("Login success");
-         u.loggedin = true;
-         u.cred_used = 'password';
-         u.id = cred.id;
-         userUpdate();
-         onLogin();
-     }
-     else {
-         log("Login failed");
-         notifyStatus("Login failed");
-     }
-   }
+function loginPasswordSubmit( e ) {
+	if( e ) e.preventDefault();
+	var form = query('form.login-password');
+	log("Submit login form ");
 
- function userUpdate() {
-     Lockr.set('user', {
-         id: u.id,
-         loggedin: u.loggedin,
-         cred_used: u.cred_used,
-     });
-     onUserUpdated();
- }
- 
- function onUserUpdated() {
-     query('.user-info .local').innerHTML =
-     `id: ${u.id}\ncred: ${u.cred_used}`;
-     if( u.cred_used == 'google' ) {
-         s.google.then(function(){
-             var pre = query('.user-info .google');
-             var c = "Google:";
-             var auth2 = gapi.auth2.getAuthInstance();
-             var g_user = auth2.currentUser.get();
+	if ( !!navigator.credentials ) {
+		var cred = new PasswordCredential(form);
+		navigator.credentials.store(cred)	 
+			.then(function() {
+				notifyStatus("Save the password for faster login next time");
+				log("Stored creds");
+				fetch("/app1/welcome", {
+					method: 'POST',
+					credentials: cred,
+				}).then(r=>onPasswordSubmitResponse(r,cred));
+			});
+	} else {
+		fetch("/app1/welcome", {
+			method: 'POST',
+			body: new FormData(form),
+		}).then(r=>onPasswordSubmitResponse(r,{
+			id: form.elements.username.value,
+		}));
+	}
 
-             var online = g_user.isSignedIn();
-             if( online )
-                 c += "\nonline";
-             else
-                 c += "\noffline";
-             c += "\nGoogleUser id: "+g_user.getId();
+	return false;
+}
 
-             var scopes = g_user.getGrantedScopes();
-             if( scopes ) {
-                 c += "\nScopes";
-                 for(let scope of scopes.split(' ') ){
-                     c+= "\n + "+scope.match(/[^\/]+$/);
-                 }
-//                 c += "\n"+scopes;
-             }
+function onPasswordSubmitResponse(r, cred) {
+	if( r.status == 200 ) {
+		log("Login SUCCESS");
+		notifyStatus("Login success");
+		u.loggedin = true;
+		u.cred_used = 'password';
+		u.id = cred.id;
+		userUpdate();
+		onLogin();
+	}
+	else {
+		log("Login failed");
+		notifyStatus("Login failed");
+	}
+}
 
-             var has_email = ( g_user.hasGrantedScopes('https://www.googleapis.com/auth/userinfo.email') || g_user.hasGrantedScopes('userinfo.email') );
+function userUpdate() {
+	Lockr.set('user', {
+		id: u.id,
+		loggedin: u.loggedin,
+		cred_used: u.cred_used,
+	});
+	onUserUpdated();
+}
 
-             if( has_email ) {
-                 //                 get_email.then(e=>{ c += "\nEmail: "+e });
-             }
-             
-             
-             var g_profile= g_user.getBasicProfile();
-             if( g_profile ) {
-                 c += "\nProfile";
-                 c += "\n  name: "+ g_profile.getName();
-                 c += "\n  given name: "+ g_profile.getGivenName();
-                 c += "\n  family name: "+ g_profile.getFamilyName();
-//                 c += "\n  image url: "+ g_profile.getImageUrl();
-                 c += "\n  email: "+ g_profile.getEmail();
-             } else {
-                 // google_get_userinfo.then(i=>{ c += "\nInfo: "+i });
-                 google_get_userinfo();
-             }
+function onUserUpdated() {
+	query('.user-info .local').innerHTML =
+	`id: ${u.id}\ncred: ${u.cred_used}`;
+	if( u.cred_used == 'google' ) {
+		s.google.then(function(){
+			var pre = query('.user-info .google');
+			var c = "Google:";
+			var auth2 = gapi.auth2.getAuthInstance();
+			var g_user = auth2.currentUser.get();
 
-             var auth = g_user.getAuthResponse();
-             if( auth && online ) {
-                 c += "\nIssued at "+new Date(auth.first_issued_at);
-                 c += "\nExpires at "+new Date(auth.expires_at);
-                 c += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
-                 
-                 c += "\n"+JSON.stringify(auth);
-//                 c += "\nProfile name: "+ g_profile.getName();
-             }
+			var online = g_user.isSignedIn();
+			if( online )
+				c += "\nonline";
+			else
+				c += "\noffline";
+			c += "\nGoogleUser id: "+g_user.getId();
 
-             
-             pre.innerHTML = c +"\n\n";
+			var scopes = g_user.getGrantedScopes();
+			if( scopes ) {
+				c += "\nScopes";
+				for(let scope of scopes.split(' ') ){
+					c+= "\n + "+scope.match(/[^\/]+$/);
+				}
+				//								 c += "\n"+scopes;
+			}
 
-             if( online ) {
-                 var t_revoke = document.createElement('button');
-                 t_revoke.innerHTML = "Revoke";
-                 t_revoke.onclick = function(){
-                     g_user.disconnect().then( onUserUpdated );
-                 };
-                 pre.appendChild(t_revoke);
+			var has_email = ( g_user.hasGrantedScopes('https://www.googleapis.com/auth/userinfo.email') || g_user.hasGrantedScopes('userinfo.email') );
 
-                 
-                 var t_email = document.createElement('button');
-                 t_email.innerHTML = "Google email";
-                 t_email.onclick = function(){
-                     g_user.grant({scope:'email'}).then(s=>{
-                              onUserUpdated();
-                     }, f=>{
-                         log("Failed");
-                         notifyStatus("I thought you liked me...");
-                     });
-                 }
-                 pre.appendChild(t_email);
-             }
+			if( has_email ) {
+				//								 get_email.then(e=>{ c += "\nEmail: "+e });
+			}
+			
+			
+			var g_profile= g_user.getBasicProfile();
+			if( g_profile ) {
+				c += "\nProfile";
+				c += "\n	name: "+ g_profile.getName();
+				c += "\n	given name: "+ g_profile.getGivenName();
+				c += "\n	family name: "+ g_profile.getFamilyName();
+				//								 c += "\n	 image url: "+ g_profile.getImageUrl();
+				c += "\n	email: "+ g_profile.getEmail();
+			} else {
+				// google_get_userinfo.then(i=>{ c += "\nInfo: "+i });
+				s.google.getUserinfo();
+			}
 
-             // Se https://developers.google.com/identity/protocols/googlescopes
-             if( !online ) {
-                 var t_login = document.createElement('button');
-                 t_login.innerHTML = "Login";
-                 t_login.onclick = function(){
-                     auth2.signIn({
-                         scope: 'openid',
-                         login_hint: 'jonas.liljegren@gmail.com',
-                     }).then(s => {
-                         notifyStatus("Added email access");
-                         onGoogleLoginSuccess(1);
-                     }, f=>{
-                         log("Failed");
-                         notifyStatus("You denied access to Google login");
-                     });
-                 };
-                 pre.appendChild(t_login);
-             }
-         });
-     }
- }
+			var auth = g_user.getAuthResponse();
+			if( auth && online ) {
+				c += "\nIssued at "+new Date(auth.first_issued_at);
+				c += "\nExpires at "+new Date(auth.expires_at);
+				c += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
+				
+				c += "\n"+JSON.stringify(auth);
+				//								 c += "\nProfile name: "+ g_profile.getName();
+			}
 
- function google_get_userinfo() {
-     log("gapi load client");
-     gapi.load('client', function(){
-         log("Client loaded");
-         gapi.client.load('oauth2', 'v2', function(){
-             log("Client oauth2 loaded");
-             gapi.client.oauth2.userinfo.get().execute(function(resp) {
-                 log("Oauth2 response");
-                 log(resp);
-             });
-         });
+			
+			pre.innerHTML = c +"\n\n";
 
-     });
- }
- 
- loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
-     u = new User(Lockr.get('user'));
+			if( online ) {
+				var t_revoke = document.createElement('button');
+				t_revoke.innerHTML = "Revoke";
+				t_revoke.onclick = function(){
+					g_user.disconnect().then( onUserUpdated );
+				};
+				pre.appendChild(t_revoke);
 
-     if( u ) {
-         onUserUpdated();
-     } else {
-         u = new User();
-         userUpdate();
-     }
- 
-     if( u.loggedin ) {
-         notifyStatus("Welcome back");
-         onLogin();
-     } else if( u.id && u.cred_used ) {
-         // Identified but logged out. Respect that
-     } else if( !navigator.credentials ) {
-         notifyStatus("Your browser do not support credentials manager");
-     }
- 
-     fromId('logout').onclick = function(){
-         // navigator.credentials.requireUserMediation();
-         notifyStatus("Logged out");
-         u.loggedin = false;
-         userUpdate();
-         onLogout();
-     }
+				
+				var t_email = document.createElement('button');
+				t_email.innerHTML = "Google email";
+				t_email.onclick = function(){
+					g_user.grant({scope:'email'}).then(s=>{
+						onUserUpdated();
+					}, f=>{
+						log("Failed");
+						notifyStatus("I thought you liked me...");
+					});
+				}
+				pre.appendChild(t_email);
+			}
 
-     fromId('p_login').onclick = p_login;
+			// Se https://developers.google.com/identity/protocols/googlescopes
+			if( !online ) {
+				var t_login = document.createElement('button');
+				t_login.innerHTML = "Login";
+				t_login.onclick = function(){
+					auth2.signIn({
+						scope: 'openid',
+						login_hint: 'jonas.liljegren@gmail.com',
+					}).then(s => {
+						notifyStatus("Added email access");
+						s.google.onLoginSuccess(1);
+					}, f=>{
+						log("Failed");
+						notifyStatus("You denied access to Google login");
+					});
+				};
+				pre.appendChild(t_login);
+			}
+		});
+	}
+}
 
-     query('form.login-password .submit').onclick = loginPasswordSubmit;
-     
-     fromId('g_login').onclick = function(){ g_login(1) };
-     
-     fromId('a_login').onclick = function(){ a_login(1) };
-     
-     fromId('a_forget').onclick = doForget;
+loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
+	u = new User(Lockr.get('user'));
 
-     log('Ready');
-     autoLogin();
- });
+	if( u ) {
+		onUserUpdated();
+	} else {
+		u = new User();
+		userUpdate();
+	}
+	
+	if( u.loggedin ) {
+		notifyStatus("Welcome back");
+		onLogin();
+	} else if( u.id && u.cred_used ) {
+		// Identified but logged out. Respect that
+	} else if( !navigator.credentials ) {
+		notifyStatus("Your browser do not support credentials manager");
+	}
+	
+	fromId('logout').onclick = function(){
+		// navigator.credentials.requireUserMediation();
+		notifyStatus("Logged out");
+		u.loggedin = false;
+		userUpdate();
+		onLogout();
+	}
 
- log("Loading async");
+	fromId('p_login').onclick = p_login;
+
+	query('form.login-password .submit').onclick = loginPasswordSubmit;
+	
+	fromId('g_login').onclick = function(){ s.google.login(1) };
+	
+	fromId('a_login').onclick = function(){ a_login(1) };
+	
+	fromId('a_forget').onclick = doForget;
+
+	log('Ready');
+	autoLogin();
+});
+
+log("Loading async");
 </script>
