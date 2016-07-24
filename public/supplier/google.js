@@ -129,6 +129,9 @@ g.getUserinfo = function() {
 }
 
 g.onUserUpdated = function() {
+	log("onUserUpdated");
+	if( !g.ready ) return;
+
 	var pre = query('.user-info .google');
 	var c = "Google:";
 	var auth2 = gapi.auth2.getAuthInstance();
@@ -165,19 +168,6 @@ g.onUserUpdated = function() {
 		c += "\n	family name: "+ g_profile.getFamilyName();
 		//								 c += "\n	 image url: "+ g_profile.getImageUrl();
 		c += "\n	email: "+ g_profile.getEmail();
-	} else {
-		// google_get_userinfo.then(i=>{ c += "\nInfo: "+i });
-		s.google.getUserinfo().then(info=>{
-			var t_info = document.createElement('pre');
-			let out = "name: "+ info.name;
-			out += "\n given name: "+ info.given_name;
-			out += "\n family name: "+ info.family_name;
-			out += "\n Gender: "+ info.gender;
-			out += "\n image url: "+ info.picture;
-			out += "\n profile url: "+ info.link;
-			t_info.innerHTML = out;
-			pre.appendChild(t_info);
-		});
 	}
 
 	var auth = g_user.getAuthResponse();
@@ -194,6 +184,19 @@ g.onUserUpdated = function() {
 	pre.innerHTML = c +"\n\n";
 
 	if( online ) {
+		s.google.getUserinfo().then(info=>{
+			var t_info = document.createElement('pre');
+			let out = " name: "+ info.name;
+			out += "\n given name: "+ info.given_name;
+			out += "\n family name: "+ info.family_name;
+			out += "\n Gender: "+ info.gender;
+			out += "\n image url: "+ info.picture;
+			out += "\n profile url: "+ info.link;
+			t_info.innerHTML = out;
+			pre.appendChild(t_info);
+		});
+
+
 		var t_revoke = document.createElement('button');
 		t_revoke.innerHTML = "Revoke";
 		t_revoke.onclick = function(){
@@ -218,7 +221,7 @@ g.onUserUpdated = function() {
 	// Se https://developers.google.com/identity/protocols/googlescopes
 	if( !online ) {
 		var t_login = document.createElement('button');
-		t_login.innerHTML = "Login";
+		t_login.innerHTML = "Login with Google";
 		t_login.onclick = function(){
 			auth2.signIn({
 				scope: 'openid',
