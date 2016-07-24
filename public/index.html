@@ -16,8 +16,6 @@
 			<button id="p_login" disabled><spinner></spinner>with Password</button>
 			<button id="g_login" disabled><spinner></spinner>with Google</button>
 			<button id="f_login" disabled>with Facebook</button>
-
-			<div class="spinner1"></div>
 		</section>
 		<form class="login-password">
 			<paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
@@ -207,19 +205,6 @@ function notifyStatus(msg) {
 	fromId('status').innerHTML = msg;
 }
 
-function p_login() {
-	query('.login-alternatives').style.display = 'none';
-	query('.login-password').style.display = 'block';
-	query('form.login-password').onsubmit = s.password.loginSubmit;
-
-	if( u.name ) {
-		query('paper-input[name=username]').value = u.name;
-		query('paper-input[name=password]').focus();
-	} else {
-		query('paper-input[name=username]').focus();
-	}
-}
-
 function autoLogin() {
 	log("autoLogin");
 	if( u.loggedin ) {
@@ -239,17 +224,12 @@ function autoLogin() {
 }
 
 function doForget() {
+	for( let sup of Object.keys(s) ) {
+		if( s[sup].forget ) s[sup].forget();
+	}
+
 	if( !!navigator.credentials )
 		navigator.credentials.requireUserMediation();
-
-	var auth2 = gapi.auth2.getAuthInstance();
-	if( auth2 ) {
-		auth2.signOut().then(function () {
-			console.log('User signed out from Google');
-			// Only effective with auth2.signIn({prompt:'select_account'})
-			auth2.disconnect();
-		});
-	}
 	
 	notifyStatus("Logged out. Remeber to clear your device");
 	u = new User();
@@ -261,8 +241,8 @@ function a_login(by_click) {
 	notifyStatus("Trying to log in");
 	fromId('a_login').disabled = true;
 
-	if( u.cred_used == 'google' ) return s.google.then(s.google.login);
-	if( u.cred_used == 'password' ) return p_login();
+	if( u.cred_used == 'google' ) return s.google.then(_=>s.google.login());
+	if( u.cred_used == 'password' ) return s.password.then(_=>s.password.login());
 	
 	if(!navigator.credentials) {
 		notifyStatus("Your browser do not support credentials manager");
@@ -293,28 +273,7 @@ function navcredLogin( cred, by_click ) {
 	}
 
 	if( cred.type == 'password' ) {
-		
-		var form = new FormData();
-		form.append('csrf_token', 'maby');
-		cred.additionalData = form;
-
-		fetch("/app1/welcome", {
-			method: 'POST',
-			credentials: cred,
-		}).then(r => {
-			if( r.status == 200 ) {
-				log("Login SUCCESS");
-				notifyStatus("Login success");
-				u.loggedin = true;
-				u.cred_used = 'password';
-				u.id = cred.id;
-				userUpdate();
-				onLogin();
-			} else {
-				log("Login failed");
-				notifyStatus("Login failed");
-			}
-		});
+		s.password.navcredLogin(cred, by_click);
 	} else if( cred.type == 'federated' ) {
 		log("Trying federated login");
 		switch (cred.provider) {
@@ -410,7 +369,7 @@ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
 		onLogout();
 	}
 
-	fromId('p_login').onclick = p_login;
+	fromId('p_login').onclick = function(){ s.password.login(1) };
 
 	fromId('g_login').onclick = function(){ s.google.login(1) };
 	

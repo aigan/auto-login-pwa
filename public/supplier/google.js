@@ -112,17 +112,19 @@ g.onLoginSuccess = function(store_cred) {
 }
 
 g.getUserinfo = function() {
-	log("gapi load client");
-	gapi.load('client', function(){
-		log("Client loaded");
-		gapi.client.load('oauth2', 'v2', function(){
-			log("Client oauth2 loaded");
-			gapi.client.oauth2.userinfo.get().execute(function(resp) {
-				log("Oauth2 response");
-				log(resp);
+	return new Promise(function(resolve,reject){
+		log("gapi load client");
+		gapi.load('client', function(){
+			log("Client loaded");
+			gapi.client.load('oauth2', 'v2', function(){
+				log("Client oauth2 loaded");
+				gapi.client.oauth2.userinfo.get().execute(function(resp) {
+					log("Oauth2 response");
+					resolve(resp);
+					log(resp);
+				});
 			});
 		});
-
 	});
 }
 
@@ -165,7 +167,17 @@ g.onUserUpdated = function() {
 		c += "\n	email: "+ g_profile.getEmail();
 	} else {
 		// google_get_userinfo.then(i=>{ c += "\nInfo: "+i });
-		s.google.getUserinfo();
+		s.google.getUserinfo().then(info=>{
+			var t_info = document.createElement('pre');
+			let out = "name: "+ info.name;
+			out += "\n given name: "+ info.given_name;
+			out += "\n family name: "+ info.family_name;
+			out += "\n Gender: "+ info.gender;
+			out += "\n image url: "+ info.picture;
+			out += "\n profile url: "+ info.link;
+			t_info.innerHTML = out;
+			pre.appendChild(t_info);
+		});
 	}
 
 	var auth = g_user.getAuthResponse();
@@ -174,8 +186,8 @@ g.onUserUpdated = function() {
 		c += "\nExpires at "+new Date(auth.expires_at);
 		c += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
 		
-		c += "\n"+JSON.stringify(auth);
-		//								 c += "\nProfile name: "+ g_profile.getName();
+		//c += "\n"+JSON.stringify(auth);
+		//c += "\nProfile name: "+ g_profile.getName();
 	}
 
 	
@@ -223,6 +235,18 @@ g.onUserUpdated = function() {
 	}
 }
 
+g.forget = function() {
+	if( g.ready ) {
+		var auth2 = gapi.auth2.getAuthInstance();
+		if( auth2 ) {
+			auth2.signOut().then(function () {
+				console.log('User signed out from Google');
+				// Only effective with auth2.signIn({prompt:'select_account'})
+				auth2.disconnect();
+			});
+		}
+	}
+}
 
 
 log("google.js init");
