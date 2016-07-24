@@ -7,46 +7,59 @@ var fromId = document.getElementById.bind(document);
 
 log("main.js");
 
-function loadScriptAsync(u, c) {
-    var s = document.createElement('script');
-    s.src = '' + u;
-    s.onload = c;
-    document.head.appendChild(s);
+function importAsync(urls, f) {
+	var links = [];
+	for(let url of urls) {
+		let link = document.createElement('link');
+		link.setAttribute('rel', 'import');
+		link.setAttribute('href', url);
+		link.setAttribute('async', true);
+//		if(f) link.onload = f;
+		document.body.appendChild(link);
+		links.push(link);
+	}
+	return links;
+}
+
+function loadScriptAsync(url, f) {
+	var s = document.createElement('script');
+	s.src = '' + url;
+	if(f) s.onload = f;
+	document.head.appendChild(s);
+}
+
+var afterLoadingCallbacks = {}
+function afterLoading(label, imports, f) {
+	if(!afterLoadingCallbacks[label]){
+		afterLoadingCallbacks[label] = function(){
+			afterLoading(label,imports,f);
+		};
+	}
+
+	var loaded = 0;
+	for(let link of imports) {
+		if(link.import && link.import.readyState === 'complete') {
+			loaded ++;
+		} else {
+			// Will not add if aleready added
+			link.addEventListener('load', afterLoadingCallbacks[label] );
+		}
+	}
+
+	log("%s: Imported %s of %s", label, loaded, imports.length);
+
+	if( loaded == imports.length ) {
+		f(label);
+	}
 }
 
 
 // Lazyload web components
 //
 var webComponentsSupported =
-    ('registerElement' in document
-     && 'import' in document.createElement('link')
-     && 'content' in document.createElement('template'));
-
-function finishLazyLoading() {
-    for(var pattern in onComponentLoaded) {
-        var imports = queryAll(pattern);
-        var loaded = 0;
-
-        for(var link of imports) {
-            if(link.import && link.import.readyState === 'complete') {
-                loaded ++;
-            } else {
-                // Will not add if aleready added
-                link.addEventListener('load', finishLazyLoading);
-            }
-        }
-
-        log("%s: Imported %s of %s", pattern, loaded, imports.length);
-
-        if( loaded == imports.length ) {
-            onComponentLoaded[pattern](pattern);
-        }
-    }
-}
-
+		('registerElement' in document
+		 && 'import' in document.createElement('link')
+		 && 'content' in document.createElement('template'));
 if( !webComponentsSupported ) {
-    loadScriptAsync( "/vendor/webcomponentsjs/webcomponents-lite.min.js", finishLazyLoading);
-} else {
-    // wait for onComponentLoaded setting
-    setTimeout(finishLazyLoading,0);
+	loadScriptAsync( "/vendor/webcomponentsjs/webcomponents-lite.min.js" );
 }
