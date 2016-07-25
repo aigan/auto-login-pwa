@@ -39,21 +39,28 @@ g.navcredLogin = function( cred, by_click ) {
 		if( auth2.isSignedIn.get() ) {
 			log("Already logged in");
 			s.google.onLoginSuccess();
-		} else if( cred.email || by_click ) {
+		} else if( by_click ) {
 			// browser will block popup
 			// must specify gmail as login_hint
-			auth2.signIn({	
+			log("SIGNIN without hint");
+			auth2.signIn({
 				//	login_hint: cred.id || ''
 			}).then(function(profile) {
-				log("Google Login success");
 				s.google.onLoginSuccess();
 			}, function(f){
 				log("Failed");
 				notifyStatus("You denied access to Google login");
 			});
-		} else {
+		}
+		else {
 			// Can't avoid popup block. Pretend all is ok
 			// and present a login button
+
+			// But the login button must directly call auth2.signIn()
+			// without using callback, in order to avoid popup block.
+
+			// Best would be to just use the stored info and only ask for
+			// re-login then actually needed, directly on user interaction.
 			
 			notifyStatus("Hello again");
 			u.cred_used = 'google';
@@ -75,6 +82,7 @@ g.login = function( store_cred ) {
 	} else {
 		notifyStatus("Signing in with Google");
 		// Se https://developers.google.com/identity/protocols/googlescopes
+		log("SIGNIN with account prompt");
 		auth2.signIn({
 			prompt:'select_account'
 			// prompt only activated if explicitly signed out
@@ -92,23 +100,29 @@ g.onLoginSuccess = function(store_cred) {
 	var auth2 = gapi.auth2.getAuthInstance();
 	var g_user = auth2.currentUser.get();
 
-	u.loggedin = true;
-	u.id = g_user.getId();
-	u.cred_used = 'google';
-	userUpdate();
+	g.getUserinfo().then( p => {
+		var uid = p.email || g_user.getId();
+		var name = p.name;
+		var image = p.picture;
+		
+		u.loggedin = true;
+		u.id = uid;
+		u.cred_used = 'google';
+		userUpdate();
 
-	if(!!navigator.credentials && store_cred) {
-		// Create `Credential` object for federation
-		var cred = new FederatedCredential({
-			id:				u.id,
-			name:			'Testsson',
-			//						 iconURL:	 profile.imageUrl || DEFAULT_IMG,
-			provider: 'google'
-		});
-		navigator.credentials.store(cred);
-	}
-
-	onLogin();
+		if(!!navigator.credentials && store_cred ) {
+			// Create `Credential` object for federation
+			var cred = new FederatedCredential({
+				id:				uid,
+				name:			name,
+				iconURL:	 image,
+				provider: g.origin,
+			});
+			navigator.credentials.store(cred);
+		}
+		
+		onLogin();
+	});
 }
 
 g.getUserinfo = function() {
@@ -120,11 +134,17 @@ g.getUserinfo = function() {
 				log("Client oauth2 loaded");
 				gapi.client.oauth2.userinfo.get().execute(function(resp) {
 					log("Oauth2 response");
-					resolve(resp);
-					log(resp);
+					if( resp.error ) reject(resp);
+					else             resolve(resp);
 				});
 			});
 		});
+	});
+}
+
+g.getEmail = function() { // primary email address
+	return new Promise(function(resolve,reject){
+		g.getUserinfo().then(resp=>resolve(resp.email));
 	});
 }
 
@@ -192,7 +212,13 @@ g.onUserUpdated = function() {
 			out += "\n Gender: "+ info.gender;
 			out += "\n image url: "+ info.picture;
 			out += "\n profile url: "+ info.link;
+			out += "\n primary email: "+ info.email;
+			out += "\n email verified: "+ (info.verified_email?'Yes':'No');
 			t_info.innerHTML = out;
+			pre.appendChild(t_info);
+		}).catch(err=>{
+			var t_info = document.createElement('pre');
+			t_info.innerHTML = "Could not get userinfo: "+err.message;
 			pre.appendChild(t_info);
 		});
 
@@ -208,9 +234,10 @@ g.onUserUpdated = function() {
 		var t_email = document.createElement('button');
 		t_email.innerHTML = "Google email";
 		t_email.onclick = function(){
-			g_user.grant({scope:'email'}).then(s=>{
+			g_user.grant({scope:'email'}).then(_=>{
+				notifyStatus("Added email access");
 				onUserUpdated();
-			}, f=>{
+			}, _=>{
 				log("Failed");
 				notifyStatus("I thought you liked me...");
 			});
@@ -223,13 +250,12 @@ g.onUserUpdated = function() {
 		var t_login = document.createElement('button');
 		t_login.innerHTML = "Login with Google";
 		t_login.onclick = function(){
+			log("SIGNIN on direct click test");
 			auth2.signIn({
 				scope: 'openid',
-				login_hint: 'jonas.liljegren@gmail.com',
-			}).then(s => {
-				notifyStatus("Added email access");
+			}).then(_=>{
 				s.google.onLoginSuccess(1);
-			}, f=>{
+			}, _=>{
 				log("Failed");
 				notifyStatus("You denied access to Google login");
 			});

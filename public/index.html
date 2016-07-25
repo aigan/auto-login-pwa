@@ -143,11 +143,13 @@ spinner {
 </style>
 <script>
 "use strict";
-log('Start');
+log('index');
 
 class Supplier {
-	constructor(lib) {
+	constructor(lib, origin) {
 		this.lib = lib;
+		this.origin = origin; // Federated identity providor
+		this.label = null; // Will be set after cunstruction..
 		this.ready = false;
 		this.exec = null;
 		this.promise = null;
@@ -172,13 +174,22 @@ class Supplier {
 var u; // User
 var s = // Supplier
 {
-	google: new Supplier('supplier/google.js'),
+	google: new Supplier('supplier/google.js',"https://accounts.google.com"),
 	password: new Supplier('supplier/password.js'),
 	facebook: {
 		ready: false,
+		origin: "https://www.facebook.com",
 	},
 	//		 test: new Supplier('supplier/test.js'),
 };
+
+var originIndex = {};
+for( let sup in s ) {
+	if(!s[sup].origin) continue;
+	originIndex[s[sup].origin] = s[sup];
+	s[sup].label = sup;
+	log("%s: %s", sup, s[sup].origin);
+}
 
 // s.test.then(()=>log("Test loaded"));
 
@@ -252,11 +263,9 @@ function a_login(by_click) {
 	navigator.credentials.get({
 		password: true,
 		federated: {
-			providers: [
-				'google',
-				'facebook',
-			]
-		}
+			providers: Object.keys(originIndex),
+		},
+		unmediated: true,
 	}).then( cred => navcredLogin(cred, by_click) );
 }
 
@@ -271,11 +280,12 @@ function navcredLogin( cred, by_click ) {
 	}
 
 	if( cred.type == 'password' ) {
-		s.password.navcredLogin(cred, by_click);
+		s.password.then(_=>s.password.navcredLogin(cred, by_click));
 	} else if( cred.type == 'federated' ) {
 		log("Trying federated login");
-		if( s[cred.provider] )
-			return s[cred.provider].navcredLogin(cred, by_click);
+		var sup = originIndex[cred.provider];
+		if( sup )
+			return sup.then(_=>sup.navcredLogin(cred, by_click));
 
 		log("Unhandled federated provider");
 		log(cred.provider);
@@ -363,5 +373,5 @@ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
 	autoLogin();
 });
 
-log("End of index init");
+log("index init");
 </script>
