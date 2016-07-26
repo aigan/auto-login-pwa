@@ -1,13 +1,15 @@
 "use strict";
 log('google.js');
 
-var g = s.google;
-var gu = u.s.google = u.s.google || {};
+var g = alp.s.google;
+var u = alp.c.u;
+var gu = alp.c.u.s.google = u.s.google || {};
+
 
 g.exec = function(resolve,reject) {
 	loadScriptAsync("//apis.google.com/js/platform.js", function(){
 		gapi.load('auth2', function() {
-			config_promise.then(c=>{
+			alp.config_promise.then(c=>{
 				c.google.fetch_basic_profile = false;
 
 				// Ask for as little as possible. But we really could
@@ -18,7 +20,7 @@ g.exec = function(resolve,reject) {
 				gapi.auth2.init(c.google).then(function() {
 					log("Google login init done");
 					g.ready = true;
-					drawLoginWidget();
+					alp.drawLoginWidget();
 					resolve(); // promise resolved
 				});
 			});
@@ -35,8 +37,8 @@ g.navcredLogin = function( cred, by_click ) {
 
 	if( auth2.isSignedIn.get() ) {
 		log("Already logged in");
-		notifyStatus("Welcome back");
-		s.google.onLoginSuccess();
+		alp.notifyStatus("Welcome back");
+		g.onLoginSuccess();
 		return;
 	}
 
@@ -52,12 +54,12 @@ g.navcredLogin = function( cred, by_click ) {
 		gu.loggedin = false;
 		gu.cred_id = cred.id;
 		u.loggedin = true;
-		u.id = cred.id;
+		u.cred_id = cred.id;
 		u.cred_used = 'google';
-		userUpdate();
+		alp.userUpdate();
 
-		onLogin();
-		notifyStatus("Welcome back");
+		alp.onLogin();
+		alp.notifyStatus("Welcome back");
 		return;
 	}
 		
@@ -67,10 +69,10 @@ g.navcredLogin = function( cred, by_click ) {
 	auth2.signIn({
 		login_hint: cred.id || ''
 	}).then(function(profile) {
-		s.google.onLoginSuccess();
+		g.onLoginSuccess();
 	}, function(f){
 		log("Failed");
-		notifyStatus("You denied access to Google login");
+		alp.notifyStatus("You denied access to Google login");
 	});
 }
 
@@ -85,7 +87,7 @@ g.login = function( store_cred ) {
 		//				 log('Already signed in with Google');
 		g.onLoginSuccess();
 	} else {
-		notifyStatus("Signing in with Google");
+		alp.notifyStatus("Signing in with Google");
 		// Se https://developers.google.com/identity/protocols/googlescopes
 		log("SIGNIN with account prompt");
 		auth2.signIn({
@@ -93,14 +95,14 @@ g.login = function( store_cred ) {
 			// prompt only activated if explicitly signed out
 		}).then(_=> g.onLoginSuccess(store_cred), _=>{
 			log("Failed");
-			notifyStatus("You denied access to Google login");
+			alp.notifyStatus("You denied access to Google login");
 		});
 	}
 }
 
 g.onLoginSuccess = function(store_cred) {
 	log("Signed in");
-	notifyStatus("Signed in with Google");
+	alp.notifyStatus("Signed in with Google");
 
 	var auth2 = gapi.auth2.getAuthInstance();
 	var g_user = auth2.currentUser.get();
@@ -124,13 +126,13 @@ g.onLoginSuccess = function(store_cred) {
 		}
 		
 		u.loggedin = true;
-		u.id = uid;
+		u.cred_id = uid;
 		u.cred_used = 'google';
 		gu.loggedin = true;
 		gu.id = g_user.getId();
-		userUpdate();
+		alp.userUpdate();
 
-		onLogin();
+		alp.onLogin();
 	});
 }
 
@@ -169,10 +171,10 @@ g.onUserUpdated = function() {
 	var online = g_user.isSignedIn();
 	if( online ){
 		log("Google online");
-		c += "\nonline";
+		c += " online";
 	} else {
 		log("Google offline");
-		c += "\noffline";
+		c += " offline";
 	}
 	c += "\nGoogleUser id: "+gu.id;
 
@@ -214,7 +216,7 @@ g.onUserUpdated = function() {
 	pre.innerHTML = c +"\n\n";
 
 	if( online ) {
-		s.google.getUserinfo().then(info=>{
+		g.getUserinfo().then(info=>{
 			var t_info = document.createElement('pre');
 			let out = "name: "+ info.name;
 			out += "\ngiven name: "+ info.given_name;
@@ -237,7 +239,7 @@ g.onUserUpdated = function() {
 		var t_revoke = document.createElement('button');
 		t_revoke.innerHTML = "Revoke";
 		t_revoke.onclick = function(){
-			g_user.disconnect().then( onUserUpdated );
+			g_user.disconnect().then( alp.onUserUpdated );
 		};
 		pre.appendChild(t_revoke);
 
@@ -246,11 +248,11 @@ g.onUserUpdated = function() {
 		t_email.innerHTML = "Google email";
 		t_email.onclick = function(){
 			g_user.grant({scope:'email'}).then(_=>{
-				notifyStatus("Added email access");
-				onUserUpdated();
+				alp.notifyStatus("Added email access");
+				alp.onUserUpdated();
 			}, _=>{
 				log("Failed");
-				notifyStatus("I thought you liked me...");
+				alp.notifyStatus("I thought you liked me...");
 			});
 		}
 		pre.appendChild(t_email);
@@ -265,10 +267,10 @@ g.onUserUpdated = function() {
 			auth2.signIn({
 				scope: 'openid',
 			}).then(_=>{
-				s.google.onLoginSuccess(1);
+				g.onLoginSuccess(1);
 			}, _=>{
 				log("Failed");
-				notifyStatus("You denied access to Google login");
+				alp.notifyStatus("You denied access to Google login");
 			});
 		};
 		pre.appendChild(t_login);
@@ -283,7 +285,7 @@ g.forget = function() {
 				console.log('User signed out from Google');
 				// Only effective with auth2.signIn({prompt:'select_account'})
 				auth2.disconnect();
-				onUserUpdated();
+				alp.onUserUpdated();
 			});
 		}
 	}

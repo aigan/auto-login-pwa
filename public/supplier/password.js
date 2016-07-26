@@ -1,8 +1,9 @@
 "use strict";
 log('password.js');
 
-var p = s.password;
-var pu = u.s.password;
+var p = alp.s.password;
+var u = alp.c.u;
+var pu = alp.c.u.s.password;
 
 
 p.exec = function(resolve,reject) {
@@ -15,11 +16,11 @@ p.exec = function(resolve,reject) {
 
 	afterLoading('password', imports, _ => {
 		log('Elements are upgraded!');
-		s.password.ready = true;
+		p.ready = true;
 
-		query('form.login-password .submit').onclick = s.password.loginSubmit;
+		query('form.login-password .submit').onclick = p.loginSubmit;
 
-		drawLoginWidget();
+		alp.drawLoginWidget();
 		resolve(); // promise resolved
 	});
 };
@@ -28,7 +29,7 @@ p.login = function() {
 	log("p.login");
 	query('.login-alternatives').style.display = 'none';
 	query('.login-password').style.display = 'block';
-	query('form.login-password').onsubmit = s.password.loginSubmit;
+	query('form.login-password').onsubmit = p.loginSubmit;
 
 	if( u.name ) {
 		query('paper-input[name=username]').value = u.name;
@@ -50,15 +51,15 @@ p.navcredLogin = function(cred, by_click) {
 	}).then(r => {
 		if( r.status == 200 ) {
 			log("Auto-Login SUCCESS");
-			notifyStatus("Login success");
+			alp.notifyStatus("Login success");
 			u.loggedin = true;
 			u.cred_used = 'password';
-			u.id = cred.id;
-			userUpdate();
-			onLogin();
+			u.cred_id = cred.id;
+			alp.userUpdate();
+			alp.onLogin();
 		} else {
 			log("Login failed");
-			notifyStatus("Login failed");
+			alp.notifyStatus("Login failed");
 		}
 	});
 }
@@ -73,7 +74,7 @@ p.loginSubmit = function( e ) {
 		var cred = new PasswordCredential(form);
 		navigator.credentials.store(cred)	 
 			.then(function() {
-				notifyStatus("Save the password for faster login next time");
+				alp.notifyStatus("Save the password for faster login next time");
 				log("Stored creds");
 				fetch("/app1/welcome", {
 					method: 'POST',
@@ -95,16 +96,16 @@ p.loginSubmit = function( e ) {
 p.onLoginSubmitResponse = function(r, cred) {
 	if( r.status == 200 ) {
 		log("Login SUCCESS");
-		notifyStatus("Login success");
+		alp.notifyStatus("Login success");
 		u.loggedin = true;
 		u.cred_used = 'password';
-		u.id = cred.id;
-		userUpdate();
-		onLogin();
+		u.cred_id = cred.id;
+		alp.userUpdate();
+		alp.onLogin();
 	}
 	else {
 		log("Login failed");
-		notifyStatus("Login failed");
+		alp.notifyStatus("Login failed");
 	}
 }
 

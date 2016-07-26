@@ -25,7 +25,7 @@
 			</form>
 		</section>
 		<section class="logged-in">
-			<p>It's a brand new world</p>
+			<p>It's a <span class="wow">brand</span> new world</p>
 		</section>
 		<section class="user-info">
 			<button id="a_forget">Forget me</button> on this device
@@ -67,7 +67,9 @@ spacer {
 	display: none;
 }
 
-
+.wow {
+	text-shadow: 0 0 .1em #FF0000;
+}
 
 header section {
 	display: flex;
@@ -148,6 +150,8 @@ spinner {
 "use strict";
 log('index');
 
+var alp = function(){
+
 class Supplier {
 	constructor(lib, origin) {
 		this.lib = lib;
@@ -174,7 +178,9 @@ class Supplier {
 	}
 }
 
-var u; // User
+var c = { // Container for things to pass around
+	u: null, // Current user
+};
 var s = // Supplier
 {
 	google: new Supplier('supplier/google.js',"https://accounts.google.com"),
@@ -194,21 +200,21 @@ for( let sup in s ) {
 	log("%s: %s", sup, s[sup].origin);
 }
 
-// s.test.then(()=>log("Test loaded"));
-
-
 var config_promise = fetch("config.json").then( r=>r.json() );
 
+
+	
 class User {
 	constructor(p) {
 		if(!p) p = {};
 		this.loggedin = p.loggedin || false;
-		this.id = p.id;
+		this.cred_id = p.cred_id;
 		this.cred_used = p.cred_used;
 		this.s = p.s || {};
 	}
 }
 
+////////////////////////////////////////////////////////////
 
 function notifyStatus(msg) {
 	fromId('status').innerHTML = msg;
@@ -216,10 +222,10 @@ function notifyStatus(msg) {
 
 function considerAutoLogin() {
 	log("consider autoLogin");
-	if( u.loggedin ) {
+	if( c.u.loggedin ) {
 		notifyStatus("Welcome back");
 		onLogin();
-	} else if( u.id && u.cred_used ) {
+	} else if( c.u.cred_id && c.u.cred_used ) {
 		// Identified but logged out. Respect that
 		notifyStatus("");
 
@@ -232,7 +238,7 @@ function considerAutoLogin() {
 				},
 				unmediated: true,
 			}).then( cred => {
-				u.cred = cred;
+				c.u.cred = cred;
 				log("Got cred "+cred );
 				if( cred )
 					notifyStatus("Hello again");
@@ -240,7 +246,7 @@ function considerAutoLogin() {
 			});
 		} else {
 			// Load in suppliers
-			s[u.cred_used].then( drawLoginWidget );
+			s[c.u.cred_used].then( drawLoginWidget );
 		}
 
 	} else {
@@ -257,7 +263,7 @@ function doLogout() {
 		navigator.credentials.requireUserMediation();
 	
 	notifyStatus("Logged out");
-	u.loggedin = false;
+	c.u.loggedin = false;
 
 	//Callbacks will remove data just after this update
 	userUpdate();
@@ -273,7 +279,7 @@ function doForget() {
 		navigator.credentials.requireUserMediation();
 	
 	notifyStatus("Logged out. Remeber to clear your device");
-	u = new User();
+	c.u = new User();
 	Lockr.rm('user');
 	onLogout();
 }
@@ -283,19 +289,19 @@ function a_login(by_click) {
 	fromId('a_login').disabled = true;
 	
 	if(!navigator.credentials) {
-		if( u.cred_used ) {
+		if( c.u.cred_used ) {
 			// supplier loaded by considerAutoLogin()
-				return s[u.cred_used].login();
+				return s[c.u.cred_used].login();
 		}
 		
 		notifyStatus("Your browser do not support credentials manager");
-		u.cred_used = null;
+		c.u.cred_used = null;
 		drawLoginWidget();
 		return;
 	}
 
-	if( u.cred )
-		return navcredLogin(u.cred, by_click);
+	if( c.u.cred )
+		return navcredLogin(c.u.cred, by_click);
 
 	log("Getting navcred");
 	navigator.credentials.get({
@@ -305,7 +311,7 @@ function a_login(by_click) {
 		},
 //		unmediated: by_click?false:true,
 	}).then( cred => {
-		u.cred = cred;
+		c.u.cred = cred;
 		navcredLogin(cred, false);
 	} );
 }
@@ -314,7 +320,7 @@ function navcredLogin( cred, by_click ) {
 	if( !cred ) {
 		log("No cred");
 		notifyStatus("No login credentials found");
-		u.cred_used = null;
+		c.u.cred_used = null;
 		userUpdate();
 		drawLoginWidget();
 		return;
@@ -357,9 +363,9 @@ function onLogout() {
 }
 
 function drawLoginWidget() {
-	query('.login-alternatives').setAttribute('cred_used',u.cred_used);
-	fromId('a_login').disabled = !u.cred_used;
-	if( !u.cred_used ) {
+	query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
+	fromId('a_login').disabled = !c.u.cred_used;
+	if( !c.u.cred_used ) {
 		fromId('p_login').disabled = !s.password.then().ready;
 		fromId('g_login').disabled = !s.google.then().ready;
 		fromId('f_login').disabled = !s.facebook.ready;
@@ -372,21 +378,21 @@ function drawLoginWidget() {
 
 function userUpdate() {
 	Lockr.set('user', {
-		id: u.id,
-		loggedin: u.loggedin,
-		cred_used: u.cred_used,
-		s: u.s,
+		cred_id: c.u.cred_id,
+		loggedin: c.u.loggedin,
+		cred_used: c.u.cred_used,
+		s: c.u.s,
 	});
 	onUserUpdated();
 }
 
 function onUserUpdated() {
 	query('.user-info .local').innerHTML =
-	`id: ${u.id}\ncred: ${u.cred_used}`;
+	`cred_id: ${c.u.cred_id}\ncred: ${c.u.cred_used}`;
 
 	Object.keys(s).forEach( sup => {
 //		log(sup);
-		if( u.cred_used == sup )
+		if( c.u.cred_used == sup )
 			s[sup].then(_=> {
 				if(s[sup].onUserUpdated)
 					s[sup].onUserUpdated();
@@ -395,12 +401,12 @@ function onUserUpdated() {
 }
 
 loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
-	u = new User(Lockr.get('user'));
+	c.u = new User(Lockr.get('user'));
 
-	if( u ) {
+	if( c.u ) {
 		onUserUpdated();
 	} else {
-		u = new User();
+		c.u = new User();
 		userUpdate();
 	}
 	
@@ -417,5 +423,20 @@ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
 	considerAutoLogin();
 });
 
+
+
+	return {
+		s: s,
+		c: c,
+		config_promise: config_promise,
+		drawLoginWidget: drawLoginWidget,
+		onUserUpdated: onUserUpdated,
+		notifyStatus: notifyStatus,
+		userUpdate: userUpdate,
+		onLogin: onLogin,
+	}
+
+}();
+	
 log("index init");
 </script>
