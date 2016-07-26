@@ -2,7 +2,7 @@
 log('google.js');
 
 var g = s.google;
-var gu = u.s.google;
+var gu = u.s.google = u.s.google || {};
 
 g.exec = function(resolve,reject) {
 	loadScriptAsync("//apis.google.com/js/platform.js", function(){
@@ -26,46 +26,51 @@ g.exec = function(resolve,reject) {
 	});
 };
 
+
+// MUST BE CALLED WITHOUT INDIRECTION
 g.navcredLogin = function( cred, by_click ) {
-	log("Trying Google login");
+
 	// Se https://developers.google.com/identity/protocols/googlescopes
-	s.google.then(function(){
-		// Federated login using Google Sign-In	 
-		var auth2 = gapi.auth2.getAuthInstance();
+	var auth2 = gapi.auth2.getAuthInstance();
 
-		// In Google Sign-In library, you can specify an account.	 
-		// Attempt to sign in with by using `login_hint`.
-		log("Doing Google login");
-		if( auth2.isSignedIn.get() ) {
-			log("Already logged in");
-			s.google.onLoginSuccess();
-		} else if( by_click ) {
-			// browser will block popup
-			// must specify gmail as login_hint
-			log("SIGNIN without hint");
-			auth2.signIn({
-				//	login_hint: cred.id || ''
-			}).then(function(profile) {
-				s.google.onLoginSuccess();
-			}, function(f){
-				log("Failed");
-				notifyStatus("You denied access to Google login");
-			});
-		}
-		else {
-			// Can't avoid popup block. Pretend all is ok
-			// and present a login button
+	if( auth2.isSignedIn.get() ) {
+		log("Already logged in");
+		notifyStatus("Welcome back");
+		s.google.onLoginSuccess();
+		return;
+	}
 
-			// But the login button must directly call auth2.signIn()
-			// without using callback, in order to avoid popup block.
+	if( !g.ready || !by_click ){
+		// Can't avoid popup block. Pretend all is ok.
+		
+		// But the login button must directly call auth2.signIn()
+		// without using callback, in order to avoid popup block.
+		
+		// Best would be to just use the stored info and only ask for
+		// re-login then actually needed, directly on user interaction.
+		
+		gu.loggedin = false;
+		gu.cred_id = cred.id;
+		u.loggedin = true;
+		u.id = cred.id;
+		u.cred_used = 'google';
+		userUpdate();
 
-			// Best would be to just use the stored info and only ask for
-			// re-login then actually needed, directly on user interaction.
-			
-			notifyStatus("Hello again");
-			u.cred_used = 'google';
-			drawLoginWidget();
-		}
+		onLogin();
+		notifyStatus("Welcome back");
+		return;
+	}
+		
+	// In Google Sign-In library, you can specify an account.	 
+	// Attempt to sign in with by using `login_hint`.
+	log("Doing Google login");
+	auth2.signIn({
+		login_hint: cred.id || ''
+	}).then(function(profile) {
+		s.google.onLoginSuccess();
+	}, function(f){
+		log("Failed");
+		notifyStatus("You denied access to Google login");
 	});
 }
 
@@ -86,7 +91,7 @@ g.login = function( store_cred ) {
 		auth2.signIn({
 			prompt:'select_account'
 			// prompt only activated if explicitly signed out
-		}).then(s => g.onLoginSuccess(store_cred), f=>{
+		}).then(_=> g.onLoginSuccess(store_cred), _=>{
 			log("Failed");
 			notifyStatus("You denied access to Google login");
 		});
@@ -99,17 +104,12 @@ g.onLoginSuccess = function(store_cred) {
 
 	var auth2 = gapi.auth2.getAuthInstance();
 	var g_user = auth2.currentUser.get();
-
+	
 	g.getUserinfo().then( p => {
 		var uid = p.email || g_user.getId();
 		var name = p.name;
 		var image = p.picture;
 		
-		u.loggedin = true;
-		u.id = uid;
-		u.cred_used = 'google';
-		userUpdate();
-
 		if(!!navigator.credentials && store_cred ) {
 			// Create `Credential` object for federation
 			var cred = new FederatedCredential({
@@ -119,19 +119,28 @@ g.onLoginSuccess = function(store_cred) {
 				provider: g.origin,
 			});
 			navigator.credentials.store(cred);
+
+			gu.cred_id = uid;
 		}
 		
+		u.loggedin = true;
+		u.id = uid;
+		u.cred_used = 'google';
+		gu.loggedin = true;
+		gu.id = g_user.getId();
+		userUpdate();
+
 		onLogin();
 	});
 }
 
 g.getUserinfo = function() {
 	return new Promise(function(resolve,reject){
-		log("gapi load client");
+		//log("gapi load client");
 		gapi.load('client', function(){
-			log("Client loaded");
+			//log("Client loaded");
 			gapi.client.load('oauth2', 'v2', function(){
-				log("Client oauth2 loaded");
+				//log("Client oauth2 loaded");
 				gapi.client.oauth2.userinfo.get().execute(function(resp) {
 					log("Oauth2 response");
 					if( resp.error ) reject(resp);
@@ -158,11 +167,14 @@ g.onUserUpdated = function() {
 	var g_user = auth2.currentUser.get();
 
 	var online = g_user.isSignedIn();
-	if( online )
+	if( online ){
+		log("Google online");
 		c += "\nonline";
-	else
+	} else {
+		log("Google offline");
 		c += "\noffline";
-	c += "\nGoogleUser id: "+g_user.getId();
+	}
+	c += "\nGoogleUser id: "+gu.id;
 
 	var scopes = g_user.getGrantedScopes();
 	if( scopes ) {
@@ -199,21 +211,20 @@ g.onUserUpdated = function() {
 		//c += "\n"+JSON.stringify(auth);
 		//c += "\nProfile name: "+ g_profile.getName();
 	}
-
-	
 	pre.innerHTML = c +"\n\n";
 
 	if( online ) {
 		s.google.getUserinfo().then(info=>{
 			var t_info = document.createElement('pre');
-			let out = " name: "+ info.name;
-			out += "\n given name: "+ info.given_name;
-			out += "\n family name: "+ info.family_name;
-			out += "\n Gender: "+ info.gender;
-			out += "\n image url: "+ info.picture;
-			out += "\n profile url: "+ info.link;
-			out += "\n primary email: "+ info.email;
-			out += "\n email verified: "+ (info.verified_email?'Yes':'No');
+			let out = "name: "+ info.name;
+			out += "\ngiven name: "+ info.given_name;
+			out += "\nfamily name: "+ info.family_name;
+			out += "\nGender: "+ info.gender;
+			out += "\nimage url: "+ info.picture;
+			out += "\nprofile url: "+ info.link;
+			out += "\nprimary email: "+ info.email;
+			if( info.email )
+				out += "\nemail verified: "+ (info.verified_email?'Yes':'No');
 			t_info.innerHTML = out;
 			pre.appendChild(t_info);
 		}).catch(err=>{
@@ -246,7 +257,7 @@ g.onUserUpdated = function() {
 	}
 
 	// Se https://developers.google.com/identity/protocols/googlescopes
-	if( !online ) {
+	if( g_user && !online && u.loggedin ) {
 		var t_login = document.createElement('button');
 		t_login.innerHTML = "Login with Google";
 		t_login.onclick = function(){
@@ -272,10 +283,13 @@ g.forget = function() {
 				console.log('User signed out from Google');
 				// Only effective with auth2.signIn({prompt:'select_account'})
 				auth2.disconnect();
+				onUserUpdated();
 			});
 		}
 	}
 }
+
+g.logout = g.forget;
 
 
 log("google.js init");

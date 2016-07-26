@@ -49,7 +49,7 @@ p.navcredLogin = function(cred, by_click) {
 		credentials: cred,
 	}).then(r => {
 		if( r.status == 200 ) {
-			log("Login SUCCESS");
+			log("Auto-Login SUCCESS");
 			notifyStatus("Login success");
 			u.loggedin = true;
 			u.cred_used = 'password';

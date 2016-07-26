@@ -6,36 +6,36 @@
 	<header>
 		<section><span id="status">Loading</span></section>
 		<spacer></spacer>
-		<section class="logged-in"><button id="logout">Logout</button></section>
+		<section class="logged-in"><button id="logout">Log out</button></section>
 	</header>
-
-	<main class="logged-out">
-		<section class="login-alternatives">
-			<h1>You wanna log in?</h1>
-			<button id="a_login" disabled>Log in</button>
-			<button id="p_login" disabled><spinner></spinner>with Password</button>
-			<button id="g_login" disabled><spinner></spinner>with Google</button>
-			<button id="f_login" disabled>with Facebook</button>
+	<main>
+		<section class="logged-out">
+			<section class="login-alternatives">
+				<h1>You wanna log in?</h1>
+				<button id="a_login" disabled>Log in</button>
+				<button id="p_login" disabled><spinner></spinner>with Password</button>
+				<button id="g_login" disabled><spinner></spinner>with Google</button>
+				<button id="f_login" disabled>with Facebook</button>
+			</section>
+			<form class="login-password">
+				<paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
+				<paper-input name="password" label="Password" type="password" autocomplete="current-password"></paper-input>
+				<paper-button class="submit" raised>Login</paper-button>
+				<input hidden="true" type="submit">
+			</form>
 		</section>
-		<form class="login-password">
-			<paper-input name="username" label="Name" type="text" autocomplete="username"></paper-input>
-			<paper-input name="password" label="Password" type="password" autocomplete="current-password"></paper-input>
-			<paper-button class="submit" raised>Login</paper-button>
-			<input hidden="true" type="submit">
-		</form>
-	</main>
-	<main class="logged-in">
-		<p>It's a brand new world</p>
-		<button id="a_forget">Forget me</button> on this device
-
+		<section class="logged-in">
+			<p>It's a brand new world</p>
+		</section>
 		<section class="user-info">
+			<button id="a_forget">Forget me</button> on this device
 			<pre class="local"></pre>
 			<pre class="password"></pre>
 			<pre class="google"></pre>
 			<pre class="facebook"></pre>
 		</section>
 	</main>
-
+	
 </body>
 <style>
 html {
@@ -105,6 +105,9 @@ button:disabled {
 	background: #4059A9;
 }
 
+.user-info {
+	margin-top: 1em;
+}
 
 spinner {
 	content: "";
@@ -202,7 +205,7 @@ class User {
 		this.loggedin = p.loggedin || false;
 		this.id = p.id;
 		this.cred_used = p.cred_used;
-		this.s = {};
+		this.s = p.s || {};
 	}
 }
 
@@ -211,23 +214,54 @@ function notifyStatus(msg) {
 	fromId('status').innerHTML = msg;
 }
 
-function autoLogin() {
-	log("autoLogin");
+function considerAutoLogin() {
+	log("consider autoLogin");
 	if( u.loggedin ) {
 		notifyStatus("Welcome back");
 		onLogin();
 	} else if( u.id && u.cred_used ) {
 		// Identified but logged out. Respect that
 		notifyStatus("");
-		drawLoginWidget();
-	} else if ( !!navigator.credentials ) {
-		a_login();
+
+		if(!!navigator.credentials) {
+			log("GETTING navcred for future use");
+			navigator.credentials.get({
+				password: true,
+				federated: {
+					providers: Object.keys(originIndex),
+				},
+				unmediated: true,
+			}).then( cred => {
+				u.cred = cred;
+				log("Got cred "+cred );
+				if( cred )
+					notifyStatus("Hello again");
+				drawLoginWidget();
+			});
+		} else {
+			// Load in suppliers
+			s[u.cred_used].then( drawLoginWidget );
+		}
+
 	} else {
-		//Handle sign-in the way you did before.
-		log("No cred support");
-		notifyStatus("Your browser do not support credentials manager");
-		drawLoginWidget();
-	};
+		a_login();
+	}
+}
+
+function doLogout() {
+	for( let sup of Object.keys(s) ) {
+		if( s[sup].logout ) s[sup].logout();
+	}
+
+	if( !!navigator.credentials )
+		navigator.credentials.requireUserMediation();
+	
+	notifyStatus("Logged out");
+	u.loggedin = false;
+
+	//Callbacks will remove data just after this update
+	userUpdate();
+	onLogout();
 }
 
 function doForget() {
@@ -245,28 +279,35 @@ function doForget() {
 }
 
 function a_login(by_click) {
-	notifyStatus("Trying to log in");
+	notifyStatus("Trying to log in "+(by_click?"by click":''));
 	fromId('a_login').disabled = true;
-	
 	
 	if(!navigator.credentials) {
 		if( u.cred_used ) {
-			return s[u.cred_used].then(_=>s[u.cred_used].login());
+			// supplier loaded by considerAutoLogin()
+				return s[u.cred_used].login();
 		}
-
+		
 		notifyStatus("Your browser do not support credentials manager");
 		u.cred_used = null;
 		drawLoginWidget();
 		return;
 	}
 
+	if( u.cred )
+		return navcredLogin(u.cred, by_click);
+
+	log("Getting navcred");
 	navigator.credentials.get({
 		password: true,
 		federated: {
 			providers: Object.keys(originIndex),
 		},
-		unmediated: true,
-	}).then( cred => navcredLogin(cred, by_click) );
+//		unmediated: by_click?false:true,
+	}).then( cred => {
+		u.cred = cred;
+		navcredLogin(cred, false);
+	} );
 }
 
 function navcredLogin( cred, by_click ) {
@@ -284,7 +325,13 @@ function navcredLogin( cred, by_click ) {
 	} else if( cred.type == 'federated' ) {
 		log("Trying federated login");
 		var sup = originIndex[cred.provider];
-		if( sup )
+		if( sup && sup.navcredLogin ) {
+			log("Direct call to navcredlogin");
+
+			
+			return sup.navcredLogin(cred, by_click);
+		}
+		else if( sup )
 			return sup.then(_=>sup.navcredLogin(cred, by_click));
 
 		log("Unhandled federated provider");
@@ -294,7 +341,7 @@ function navcredLogin( cred, by_click ) {
 
 function onLogin() {
 	for(var item of queryAll('header .logged-in')) item.style.display = "flex";
-	for(var item of queryAll('main.logged-in')) item.style.display = "block";
+	for(var item of queryAll('main .logged-in')) item.style.display = "block";
 	for(var item of queryAll('.logged-out')) item.style.display = "none";
 	query('.login-alternatives').style.display = 'block';
 	query('.login-password').style.display = 'none';
@@ -303,7 +350,9 @@ function onLogin() {
 function onLogout() {
 	for(var item of queryAll('.logged-in')) item.style.display = "none";
 	for(var item of queryAll('header .logged-out')) item.style.display = "flex";
-	for(var item of queryAll('main.logged-out')) item.style.display = "block";
+	for(var item of queryAll('main .logged-out')) item.style.display = "block";
+
+	//autoLogin();
 	drawLoginWidget();
 }
 
@@ -326,6 +375,7 @@ function userUpdate() {
 		id: u.id,
 		loggedin: u.loggedin,
 		cred_used: u.cred_used,
+		s: u.s,
 	});
 	onUserUpdated();
 }
@@ -335,7 +385,7 @@ function onUserUpdated() {
 	`id: ${u.id}\ncred: ${u.cred_used}`;
 
 	Object.keys(s).forEach( sup => {
-		log(sup);
+//		log(sup);
 		if( u.cred_used == sup )
 			s[sup].then(_=> {
 				if(s[sup].onUserUpdated)
@@ -354,23 +404,17 @@ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
 		userUpdate();
 	}
 	
-	fromId('logout').onclick = function(){
-		// navigator.credentials.requireUserMediation();
-		notifyStatus("Logged out");
-		u.loggedin = false;
-		userUpdate();
-		onLogout();
-	}
+	fromId('logout').onclick = doLogout;
 
-	fromId('p_login').onclick = function(){ s.password.login(1) };
+	fromId('p_login').onclick = function(){ s.password.login(true) };
 
-	fromId('g_login').onclick = function(){ s.google.login(1) };
+	fromId('g_login').onclick = function(){ s.google.login(true) };
 	
-	fromId('a_login').onclick = function(){ a_login(1) };
+	fromId('a_login').onclick = function(){ a_login(true) };
 	
 	fromId('a_forget').onclick = doForget;
 
-	autoLogin();
+	considerAutoLogin();
 });
 
 log("index init");
