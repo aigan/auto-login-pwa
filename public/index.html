@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <link rel="icon" href="/img/jonas-2016-300.jpg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="config.js"></script>
 <script src="main.js"></script>
 <body>
 	<header>
@@ -163,7 +164,8 @@ class Supplier {
 		log("Constructing "+lib);
 	}
 
-	then(f) {
+	// reject handler somhow called twice here
+	then(resolve_in, reject_in) {
 		if(!this.promise) {
 			var sup = this;
 			this.promise = new Promise(function(resolve,reject){
@@ -173,7 +175,7 @@ class Supplier {
 				});
 			});
 		}
-		this.promise.then(f);
+		this.promise.then(resolve_in, reject_in);
 		return this;
 	}
 }
@@ -197,12 +199,12 @@ for( let sup in s ) {
 	if(!s[sup].origin) continue;
 	originIndex[s[sup].origin] = s[sup];
 	s[sup].label = sup;
-	log("%s: %s", sup, s[sup].origin);
+//	log("%s: %s", sup, s[sup].origin);
 }
 
-var config_promise = fetch("config.json").then( r=>r.json() );
-
-
+	// prefix for vendor components, taken form config,
+	// excluding ending slash.
+	var vendor = config.vendor || "bower_components";
 	
 class User {
 	constructor(p) {
@@ -366,12 +368,39 @@ function onLogout() {
 	drawLoginWidget();
 }
 
+	function onGoogleAuthInitFailed(err){
+		var spin = query('#g_login spinner');
+		if( spin ) {
+			var button = spin.parentNode;
+			spin.remove();
+			log(err);
+			
+			afterLoading('alp-warn', importAsync(["components/alp-warn.html"]), _ => {
+
+				// The warning should be placed on the button, but will not
+				// follow the button on line wrap. Should rather make this a
+				// real property of the button,
+				
+				var alts = query(".login-alternatives");
+				var details = document.createElement('details');
+				details.innerHTML = `
+<summary class="warn">&#x26a0;</summary>
+<div class="info">
+<p>Could not load Google login.</p>
+<p>Try to <a target="external-help" href="http://www.howtogeek.com/241006/how-to-block-third-party-cookies-in-every-web-browser/">enable third-party cookies</a>.</p>
+</div>`
+				alts.insertBefore(details, button);
+			});
+		}
+	}
+	
 function drawLoginWidget() {
-	query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
+	if( c.u.cred_used )
+		query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
 	fromId('a_login').disabled = !c.u.cred_used;
 	if( !c.u.cred_used ) {
 		fromId('p_login').disabled = !s.password.then().ready;
-		fromId('g_login').disabled = !s.google.then().ready;
+		fromId('g_login').disabled = !s.google.then(null,onGoogleAuthInitFailed).ready;
 		fromId('f_login').disabled = !s.facebook.ready;
 	} else {
 		fromId('p_login').disabled = true;
@@ -404,7 +433,28 @@ function onUserUpdated() {
 	});
 }
 
-loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
+	// Workaround for bugs from race conditions in async component loading
+	var polymerLoaded = false;
+	function polymer(list,f) {
+		if(!polymerLoaded){
+			log("Polymer");
+			let link = document.createElement('link');
+			link.setAttribute('rel', 'import');
+			link.setAttribute('href', vendor+"/polymer/polymer-micro.html");
+			link.setAttribute('async', true);
+			link.onload = function(){
+				polymerLoaded = true;
+				polymer(list,f);
+			};
+			document.body.appendChild(link);
+			return;
+		}
+
+		var label = list[0].match(/([^\/]+)\.html/i)[1] || list[0];
+		afterLoading(label, importAsync(list), f);
+	}
+	
+	function onLoad() {
 	c.u = new User(Lockr.get('user'));
 
 	if( c.u ) {
@@ -425,19 +475,21 @@ loadScriptAsync("/vendor/lockr/lockr.min.js", function(){
 	fromId('a_forget').onclick = doForget;
 
 	considerAutoLogin();
-});
+}
 
 
+	// Finish loading and setup
+	loadScriptAsync(vendor+"/lockr/lockr.min.js", onLoad);
 
 	return {
 		s: s,
 		c: c,
-		config_promise: config_promise,
 		drawLoginWidget: drawLoginWidget,
 		onUserUpdated: onUserUpdated,
 		notifyStatus: notifyStatus,
 		userUpdate: userUpdate,
 		onLogin: onLogin,
+		polymer: polymer,
 	}
 
 }();

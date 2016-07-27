@@ -61,5 +61,5 @@ var webComponentsSupported =
 		 && 'import' in document.createElement('link')
 		 && 'content' in document.createElement('template'));
 if( !webComponentsSupported ) {
-	loadScriptAsync( "/vendor/webcomponentsjs/webcomponents-lite.min.js" );
+	loadScriptAsync( config.vendor+"/webcomponentsjs/webcomponents-lite.min.js" );
 }

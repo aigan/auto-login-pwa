@@ -8,20 +8,30 @@ var c = alp.c;
 g.exec = function(resolve,reject) {
 	loadScriptAsync("//apis.google.com/js/platform.js", function(){
 		gapi.load('auth2', function() {
-			alp.config_promise.then(c=>{
-				c.google.fetch_basic_profile = false;
+			var conf = config.google;
+			conf.fetch_basic_profile = false;
 
-				// Ask for as little as possible. But we really could
-				// need the gmail address for credentials api
-				//auto-login. We'll ask for email later.
+			// Ask for as little as possible. But we really could
+			// need the gmail address for credentials api
+			//auto-login. We'll ask for email later.
 
-				c.google.scope = 'openid';
-				gapi.auth2.init(c.google).then(function() {
-					log("Google login init done");
-					g.ready = true;
-					alp.drawLoginWidget();
-					resolve(); // promise resolved
-				});
+			conf.scope = 'openid';
+			//conf.cookie_policy	= 'none';
+				
+			var timeout = setTimeout(function(){
+				timeout = null; // Indicate it's too late
+				reject("Timeout doing auth2 init");
+			}, 3000);
+
+			gapi.auth2.init(conf).then(function() {
+				if(!timeout){ // timeout already happend
+					log("Google auth init responded too late");
+					return;
+				}
+				clearTimeout(timeout);
+				g.ready = true;
+				alp.drawLoginWidget();
+				resolve(); // promise resolved
 			});
 		});
 	});

@@ -1,0 +1,6 @@
+var config = {	
+	google: {
+		client_id: "YOUR GOOGLE OAuth 2.0 client ID",
+	},
+	vendor: "bower_components",
+}

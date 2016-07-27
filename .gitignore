@@ -17,4 +17,4 @@ notes.txt
 .bowerrc
 
 # Custom browser config
-public/config.json
+public/config.js

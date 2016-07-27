@@ -8,20 +8,14 @@ var c = alp.c;
 p.exec = function(resolve,reject) {
 //	var imports = queryAll('link[rel="import"]');
 
-	var imports = importAsync([
-		"/vendor/paper-input/paper-input.html",
-		"/vendor/paper-button/paper-button.html",
-	]);
-
-	afterLoading('password', imports, _ => {
-		log('Elements are upgraded!');
-		p.ready = true;
-
-		query('form.login-password .submit').onclick = p.loginSubmit;
-
-		alp.drawLoginWidget();
-		resolve(); // promise resolved
-	});
+	alp.polymer([
+		config.vendor+"/paper-input/paper-input.html",
+		config.vendor+"/paper-button/paper-button.html"], _=>{
+			p.ready = true;
+			query('form.login-password .submit').onclick = p.loginSubmit;
+			alp.drawLoginWidget();
+			resolve(); // promise resolved
+		});
 };
 
 p.login = function() {
