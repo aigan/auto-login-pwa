@@ -2,8 +2,7 @@
 log('password.js');
 
 var p = alp.s.password;
-var u = alp.c.u;
-var pu = alp.c.u.s.password;
+var c = alp.c;
 
 
 p.exec = function(resolve,reject) {
@@ -31,8 +30,8 @@ p.login = function() {
 	query('.login-password').style.display = 'block';
 	query('form.login-password').onsubmit = p.loginSubmit;
 
-	if( u.name ) {
-		query('paper-input[name=username]').value = u.name;
+	if( c.u.name ) {
+		query('paper-input[name=username]').value = c.u.name;
 		query('paper-input[name=password]').focus();
 	} else {
 		query('paper-input[name=username]').focus();
@@ -52,9 +51,9 @@ p.navcredLogin = function(cred, by_click) {
 		if( r.status == 200 ) {
 			log("Auto-Login SUCCESS");
 			alp.notifyStatus("Login success");
-			u.loggedin = true;
-			u.cred_used = 'password';
-			u.cred_id = cred.id;
+			c.u.loggedin = true;
+			c.u.cred_used = 'password';
+			c.u.cred_id = cred.id;
 			alp.userUpdate();
 			alp.onLogin();
 		} else {
@@ -97,9 +96,11 @@ p.onLoginSubmitResponse = function(r, cred) {
 	if( r.status == 200 ) {
 		log("Login SUCCESS");
 		alp.notifyStatus("Login success");
-		u.loggedin = true;
-		u.cred_used = 'password';
-		u.cred_id = cred.id;
+		c.u.loggedin = true;
+		c.u.cred_used = 'password';
+		c.u.cred_id = cred.id;
+		log("About to update user");
+		log(c.u);
 		alp.userUpdate();
 		alp.onLogin();
 	}

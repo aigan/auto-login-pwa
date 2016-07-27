@@ -2,8 +2,7 @@
 log('google.js');
 
 var g = alp.s.google;
-var u = alp.c.u;
-var gu = alp.c.u.s.google = u.s.google || {};
+var c = alp.c;
 
 
 g.exec = function(resolve,reject) {
@@ -51,11 +50,12 @@ g.navcredLogin = function( cred, by_click ) {
 		// Best would be to just use the stored info and only ask for
 		// re-login then actually needed, directly on user interaction.
 		
+		var gu = c.u.s.google;
 		gu.loggedin = false;
 		gu.cred_id = cred.id;
-		u.loggedin = true;
-		u.cred_id = cred.id;
-		u.cred_used = 'google';
+		c.u.loggedin = true;
+		c.u.cred_id = cred.id;
+		c.u.cred_used = 'google';
 		alp.userUpdate();
 
 		alp.onLogin();
@@ -111,7 +111,8 @@ g.onLoginSuccess = function(store_cred) {
 		var uid = p.email || g_user.getId();
 		var name = p.name;
 		var image = p.picture;
-		
+		var gu = c.u.s.google;
+
 		if(!!navigator.credentials && store_cred ) {
 			// Create `Credential` object for federation
 			var cred = new FederatedCredential({
@@ -125,9 +126,9 @@ g.onLoginSuccess = function(store_cred) {
 			gu.cred_id = uid;
 		}
 		
-		u.loggedin = true;
-		u.cred_id = uid;
-		u.cred_used = 'google';
+		c.u.loggedin = true;
+		c.u.cred_id = uid;
+		c.u.cred_used = 'google';
 		gu.loggedin = true;
 		gu.id = g_user.getId();
 		alp.userUpdate();
@@ -164,56 +165,56 @@ g.onUserUpdated = function() {
 	if( !g.ready ) return;
 
 	var pre = query('.user-info .google');
-	var c = "Google:";
+	var out = "Google:";
 	var auth2 = gapi.auth2.getAuthInstance();
 	var g_user = auth2.currentUser.get();
 
 	var online = g_user.isSignedIn();
 	if( online ){
 		log("Google online");
-		c += " online";
+		out += " online";
 	} else {
 		log("Google offline");
-		c += " offline";
+		out += " offline";
 	}
-	c += "\nGoogleUser id: "+gu.id;
+	out += "\nGoogleUser id: "+c.u.s.google.id;
 
 	var scopes = g_user.getGrantedScopes();
 	if( scopes ) {
-		c += "\nScopes";
+		out += "\nScopes";
 		for(let scope of scopes.split(' ') ){
-			c+= "\n + "+scope.match(/[^\/]+$/);
+			out+= "\n + "+scope.match(/[^\/]+$/);
 		}
-		//								 c += "\n"+scopes;
+		//								 out += "\n"+scopes;
 	}
 
 	var has_email = ( g_user.hasGrantedScopes('https://www.googleapis.com/auth/userinfo.email') || g_user.hasGrantedScopes('userinfo.email') );
 
 	if( has_email ) {
-		//								 get_email.then(e=>{ c += "\nEmail: "+e });
+		//								 get_email.then(e=>{ out += "\nEmail: "+e });
 	}
 	
 	
 	var g_profile= g_user.getBasicProfile();
 	if( g_profile ) {
-		c += "\nProfile";
-		c += "\n	name: "+ g_profile.getName();
-		c += "\n	given name: "+ g_profile.getGivenName();
-		c += "\n	family name: "+ g_profile.getFamilyName();
-		//								 c += "\n	 image url: "+ g_profile.getImageUrl();
-		c += "\n	email: "+ g_profile.getEmail();
+		out += "\nProfile";
+		out += "\n	name: "+ g_profile.getName();
+		out += "\n	given name: "+ g_profile.getGivenName();
+		out += "\n	family name: "+ g_profile.getFamilyName();
+		//								 out += "\n	 image url: "+ g_profile.getImageUrl();
+		out += "\n	email: "+ g_profile.getEmail();
 	}
 
 	var auth = g_user.getAuthResponse();
 	if( auth && online ) {
-		c += "\nIssued at "+new Date(auth.first_issued_at);
-		c += "\nExpires at "+new Date(auth.expires_at);
-		c += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
+		out += "\nIssued at "+new Date(auth.first_issued_at);
+		out += "\nExpires at "+new Date(auth.expires_at);
+		out += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
 		
-		//c += "\n"+JSON.stringify(auth);
-		//c += "\nProfile name: "+ g_profile.getName();
+		//out += "\n"+JSON.stringify(auth);
+		//out += "\nProfile name: "+ g_profile.getName();
 	}
-	pre.innerHTML = c +"\n\n";
+	pre.innerHTML = out +"\n\n";
 
 	if( online ) {
 		g.getUserinfo().then(info=>{
@@ -259,7 +260,7 @@ g.onUserUpdated = function() {
 	}
 
 	// Se https://developers.google.com/identity/protocols/googlescopes
-	if( g_user && !online && u.loggedin ) {
+	if( g_user && !online && c.u.loggedin ) {
 		var t_login = document.createElement('button');
 		t_login.innerHTML = "Login with Google";
 		t_login.onclick = function(){

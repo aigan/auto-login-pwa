@@ -211,6 +211,10 @@ class User {
 		this.cred_id = p.cred_id;
 		this.cred_used = p.cred_used;
 		this.s = p.s || {};
+
+		for( let sup in s ) {
+			this.s[sup] = this.s[sup] || {};
+		}
 	}
 }
 
