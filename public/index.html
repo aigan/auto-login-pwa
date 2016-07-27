@@ -2,6 +2,7 @@
 <link rel="icon" href="/img/jonas-2016-300.jpg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="config.js"></script>
+<script>try{eval("for(let i of document.querySelectorAll('body')){(i)=>i+1}")} catch(e){window.location.href="unsupported.html"}</script>
 <script src="main.js"></script>
 <body>
 	<header>
@@ -359,9 +360,9 @@ var alp = function(){
 	}
 
 	function onLogout() {
-		for(var item of queryAll('.logged-in')) item.style.display = "none";
-		for(var item of queryAll('header .logged-out')) item.style.display = "flex";
-		for(var item of queryAll('main .logged-out')) item.style.display = "block";
+		for(let item of queryAll('.logged-in')) item.style.display = "none";
+		for(let item of queryAll('header .logged-out')) item.style.display = "flex";
+		for(let item of queryAll('main .logged-out')) item.style.display = "block";
 
 		//autoLogin();
 		drawLoginWidget();

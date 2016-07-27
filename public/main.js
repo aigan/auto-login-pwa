@@ -1,3 +1,5 @@
+"use strict";
+
 var log = console.log.bind(console);
 var query = document.querySelector.bind(document);
 var queryAll = document.querySelectorAll.bind(document);
