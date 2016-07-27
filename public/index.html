@@ -153,220 +153,219 @@ log('index');
 
 var alp = function(){
 
-class Supplier {
-	constructor(lib, origin) {
-		this.lib = lib;
-		this.origin = origin; // Federated identity providor
-		this.label = null; // Will be set after cunstruction..
-		this.ready = false;
-		this.exec = null;
-		this.promise = null;
-		log("Constructing "+lib);
-	}
-
-	// reject handler somhow called twice here
-	then(resolve_in, reject_in) {
-		if(!this.promise) {
-			var sup = this;
-			this.promise = new Promise(function(resolve,reject){
-				loadScriptAsync(sup.lib, function(){
-//					log("Lib loaded. Calling sup.exec");
-					sup.exec(resolve,reject);
-				});
-			});
+	class Supplier {
+		constructor(lib, origin) {
+			this.lib = lib;
+			this.origin = origin; // Federated identity providor
+			this.label = null; // Will be set after cunstruction..
+			this.ready = false;
+			this.exec = null;
+			this.promise = null;
+			log("Constructing "+lib);
 		}
-		this.promise.then(resolve_in, reject_in);
-		return this;
+
+		// reject handler somhow called twice here
+		then(resolve_in, reject_in) {
+			if(!this.promise) {
+				var sup = this;
+				this.promise = new Promise(function(resolve,reject){
+					loadScriptAsync(sup.lib, function(){
+						//log("Lib loaded. Calling sup.exec");
+						sup.exec(resolve,reject);
+					});
+				});
+			}
+			this.promise.then(resolve_in, reject_in);
+			return this;
+		}
 	}
-}
 
-var c = { // Container for things to pass around
-	u: null, // Current user
-};
-var s = // Supplier
-{
-	google: new Supplier('supplier/google.js',"https://accounts.google.com"),
-	password: new Supplier('supplier/password.js'),
-	facebook: {
-		ready: false,
-		origin: "https://www.facebook.com",
-	},
-	//		 test: new Supplier('supplier/test.js'),
-};
+	var c = { // Container for things to pass around
+		u: null, // Current user
+	};
+	var s = // Supplier
+	{
+		google: new Supplier('supplier/google.js',"https://accounts.google.com"),
+		password: new Supplier('supplier/password.js'),
+		facebook: {
+			ready: false,
+			origin: "https://www.facebook.com",
+		},
+	};
 
-var originIndex = {};
-for( let sup in s ) {
-	if(!s[sup].origin) continue;
-	originIndex[s[sup].origin] = s[sup];
-	s[sup].label = sup;
-//	log("%s: %s", sup, s[sup].origin);
-}
+	var originIndex = {};
+	for( let sup in s ) {
+		if(!s[sup].origin) continue;
+		originIndex[s[sup].origin] = s[sup];
+		s[sup].label = sup;
+		//	log("%s: %s", sup, s[sup].origin);
+	}
 
 	// prefix for vendor components, taken form config,
 	// excluding ending slash.
 	var vendor = config.vendor || "bower_components";
 	
-class User {
-	constructor(p) {
-		if(!p) p = {};
-		this.loggedin = p.loggedin || false;
-		this.cred_id = p.cred_id;
-		this.cred_used = p.cred_used;
-		this.s = p.s || {};
+	class User {
+		constructor(p) {
+			if(!p) p = {};
+			this.loggedin = p.loggedin || false;
+			this.cred_id = p.cred_id;
+			this.cred_used = p.cred_used;
+			this.s = p.s || {};
 
-		for( let sup in s ) {
-			this.s[sup] = this.s[sup] || {};
+			for( let sup in s ) {
+				this.s[sup] = this.s[sup] || {};
+			}
 		}
 	}
-}
 
-////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////
 
-function notifyStatus(msg) {
-	fromId('status').innerHTML = msg;
-}
+	function notifyStatus(msg) {
+		fromId('status').innerHTML = msg;
+	}
 
-function considerAutoLogin() {
-	log("consider autoLogin");
-	if( c.u.loggedin ) {
-		notifyStatus("Welcome back");
-		onLogin();
-	} else if( c.u.cred_id && c.u.cred_used ) {
-		// Identified but logged out. Respect that
-		notifyStatus("");
+	function considerAutoLogin() {
+		log("consider autoLogin");
+		if( c.u.loggedin ) {
+			notifyStatus("Welcome back");
+			onLogin();
+		} else if( c.u.cred_id && c.u.cred_used ) {
+			// Identified but logged out. Respect that
+			notifyStatus("");
 
-		if(!!navigator.credentials) {
-			log("GETTING navcred for future use");
-			navigator.credentials.get({
-				password: true,
-				federated: {
-					providers: Object.keys(originIndex),
-				},
-				unmediated: true,
-			}).then( cred => {
-				c.u.cred = cred;
-				log("Got cred "+cred );
-				if( cred )
-					notifyStatus("Hello again");
-				drawLoginWidget();
-			});
+			if(!!navigator.credentials) {
+				log("GETTING navcred for future use");
+				navigator.credentials.get({
+					password: true,
+					federated: {
+						providers: Object.keys(originIndex),
+					},
+					unmediated: true,
+				}).then( cred => {
+					c.u.cred = cred;
+					log("Got cred "+cred );
+					if( cred )
+						notifyStatus("Hello again");
+					drawLoginWidget();
+				});
+			} else {
+				// Load in suppliers
+				s[c.u.cred_used].then( drawLoginWidget );
+			}
+
 		} else {
-			// Load in suppliers
-			s[c.u.cred_used].then( drawLoginWidget );
+			a_login();
+		}
+	}
+
+	function doLogout() {
+		for( let sup of Object.keys(s) ) {
+			if( s[sup].logout ) s[sup].logout();
 		}
 
-	} else {
-		a_login();
-	}
-}
-
-function doLogout() {
-	for( let sup of Object.keys(s) ) {
-		if( s[sup].logout ) s[sup].logout();
-	}
-
-	if( !!navigator.credentials )
-		navigator.credentials.requireUserMediation();
-	
-	notifyStatus("Logged out");
-	c.u.loggedin = false;
-
-	//Callbacks will remove data just after this update
-	userUpdate();
-	onLogout();
-}
-
-function doForget() {
-	for( let sup of Object.keys(s) ) {
-		if( s[sup].forget ) s[sup].forget();
-	}
-
-	if( !!navigator.credentials )
-		navigator.credentials.requireUserMediation();
-	
-	notifyStatus("Logged out. Remeber to clear your device");
-	c.u = new User();
-	Lockr.rm('user');
-	onLogout();
-}
-
-function a_login(by_click) {
-	notifyStatus("Trying to log in "+(by_click?"by click":''));
-	fromId('a_login').disabled = true;
-	
-	if(!navigator.credentials) {
-		if( c.u.cred_used ) {
-			// supplier loaded by considerAutoLogin()
-				return s[c.u.cred_used].login();
-		}
+		if( !!navigator.credentials )
+			navigator.credentials.requireUserMediation();
 		
-		notifyStatus("Your browser do not support credentials manager");
-		c.u.cred_used = null;
-		drawLoginWidget();
-		return;
-	}
+		notifyStatus("Logged out");
+		c.u.loggedin = false;
 
-	if( c.u.cred )
-		return navcredLogin(c.u.cred, by_click);
-
-	log("Getting navcred");
-	navigator.credentials.get({
-		password: true,
-		federated: {
-			providers: Object.keys(originIndex),
-		},
-//		unmediated: by_click?false:true,
-	}).then( cred => {
-		c.u.cred = cred;
-		navcredLogin(cred, false);
-	} );
-}
-
-function navcredLogin( cred, by_click ) {
-	if( !cred ) {
-		log("No cred");
-		notifyStatus("No login credentials found");
-		c.u.cred_used = null;
+		//Callbacks will remove data just after this update
 		userUpdate();
-		drawLoginWidget();
-		return;
+		onLogout();
 	}
 
-	if( cred.type == 'password' ) {
-		s.password.then(_=>s.password.navcredLogin(cred, by_click));
-	} else if( cred.type == 'federated' ) {
-		log("Trying federated login");
-		var sup = originIndex[cred.provider];
-		if( sup && sup.navcredLogin ) {
-			log("Direct call to navcredlogin");
-
-			
-			return sup.navcredLogin(cred, by_click);
+	function doForget() {
+		for( let sup of Object.keys(s) ) {
+			if( s[sup].forget ) s[sup].forget();
 		}
-		else if( sup )
-			return sup.then(_=>sup.navcredLogin(cred, by_click));
 
-		log("Unhandled federated provider");
-		log(cred.provider);
+		if( !!navigator.credentials )
+			navigator.credentials.requireUserMediation();
+		
+		notifyStatus("Logged out. Remeber to clear your device");
+		c.u = new User();
+		Lockr.rm('user');
+		onLogout();
 	}
-}
 
-function onLogin() {
-	for(var item of queryAll('header .logged-in')) item.style.display = "flex";
-	for(var item of queryAll('main .logged-in')) item.style.display = "block";
-	for(var item of queryAll('.logged-out')) item.style.display = "none";
-	query('.login-alternatives').style.display = 'block';
-	query('.login-password').style.display = 'none';
-}
+	function a_login(by_click) {
+		notifyStatus("Trying to log in "+(by_click?"by click":''));
+		fromId('a_login').disabled = true;
+		
+		if(!navigator.credentials) {
+			if( c.u.cred_used ) {
+				// supplier loaded by considerAutoLogin()
+					return s[c.u.cred_used].login();
+			}
+			
+			notifyStatus("Your browser do not support credentials manager");
+			c.u.cred_used = null;
+			drawLoginWidget();
+			return;
+		}
 
-function onLogout() {
-	for(var item of queryAll('.logged-in')) item.style.display = "none";
-	for(var item of queryAll('header .logged-out')) item.style.display = "flex";
-	for(var item of queryAll('main .logged-out')) item.style.display = "block";
+		if( c.u.cred )
+			return navcredLogin(c.u.cred, by_click);
 
-	//autoLogin();
-	drawLoginWidget();
-}
+		log("Getting navcred");
+		navigator.credentials.get({
+			password: true,
+			federated: {
+				providers: Object.keys(originIndex),
+			},
+			//		unmediated: by_click?false:true,
+		}).then( cred => {
+			c.u.cred = cred;
+			navcredLogin(cred, false);
+		} );
+	}
+
+	function navcredLogin( cred, by_click ) {
+		if( !cred ) {
+			log("No cred");
+			notifyStatus("No login credentials found");
+			c.u.cred_used = null;
+			userUpdate();
+			drawLoginWidget();
+			return;
+		}
+
+		if( cred.type == 'password' ) {
+			s.password.then(_=>s.password.navcredLogin(cred, by_click));
+		} else if( cred.type == 'federated' ) {
+			log("Trying federated login");
+			var sup = originIndex[cred.provider];
+			if( sup && sup.navcredLogin ) {
+				log("Direct call to navcredlogin");
+
+				
+				return sup.navcredLogin(cred, by_click);
+			}
+			else if( sup )
+				return sup.then(_=>sup.navcredLogin(cred, by_click));
+
+			log("Unhandled federated provider");
+			log(cred.provider);
+		}
+	}
+
+	function onLogin() {
+		for(var item of queryAll('header .logged-in')) item.style.display = "flex";
+		for(var item of queryAll('main .logged-in')) item.style.display = "block";
+		for(var item of queryAll('.logged-out')) item.style.display = "none";
+		query('.login-alternatives').style.display = 'block';
+		query('.login-password').style.display = 'none';
+	}
+
+	function onLogout() {
+		for(var item of queryAll('.logged-in')) item.style.display = "none";
+		for(var item of queryAll('header .logged-out')) item.style.display = "flex";
+		for(var item of queryAll('main .logged-out')) item.style.display = "block";
+
+		//autoLogin();
+		drawLoginWidget();
+	}
 
 	function onGoogleAuthInitFailed(err){
 		var spin = query('#g_login spinner');
@@ -394,44 +393,44 @@ function onLogout() {
 		}
 	}
 	
-function drawLoginWidget() {
-	if( c.u.cred_used )
-		query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
-	fromId('a_login').disabled = !c.u.cred_used;
-	if( !c.u.cred_used ) {
-		fromId('p_login').disabled = !s.password.then().ready;
-		fromId('g_login').disabled = !s.google.then(null,onGoogleAuthInitFailed).ready;
-		fromId('f_login').disabled = !s.facebook.ready;
-	} else {
-		fromId('p_login').disabled = true;
-		fromId('g_login').disabled = true;
-		fromId('f_login').disabled = true;
+	function drawLoginWidget() {
+		if( c.u.cred_used )
+			query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
+		fromId('a_login').disabled = !c.u.cred_used;
+		if( !c.u.cred_used ) {
+			fromId('p_login').disabled = !s.password.then().ready;
+			fromId('g_login').disabled = !s.google.then(null,onGoogleAuthInitFailed).ready;
+			fromId('f_login').disabled = !s.facebook.ready;
+		} else {
+			fromId('p_login').disabled = true;
+			fromId('g_login').disabled = true;
+			fromId('f_login').disabled = true;
+		}
 	}
-}
 
-function userUpdate() {
-	Lockr.set('user', {
-		cred_id: c.u.cred_id,
-		loggedin: c.u.loggedin,
-		cred_used: c.u.cred_used,
-		s: c.u.s,
-	});
-	onUserUpdated();
-}
+	function userUpdate() {
+		Lockr.set('user', {
+			cred_id: c.u.cred_id,
+			loggedin: c.u.loggedin,
+			cred_used: c.u.cred_used,
+			s: c.u.s,
+		});
+		onUserUpdated();
+	}
 
-function onUserUpdated() {
-	query('.user-info .local').innerHTML =
-	`cred_id: ${c.u.cred_id}\ncred: ${c.u.cred_used}`;
+	function onUserUpdated() {
+		query('.user-info .local').innerHTML =
+		`cred_id: ${c.u.cred_id}\ncred: ${c.u.cred_used}`;
 
-	Object.keys(s).forEach( sup => {
-//		log(sup);
-		if( c.u.cred_used == sup )
-			s[sup].then(_=> {
-				if(s[sup].onUserUpdated)
-					s[sup].onUserUpdated();
-			});
-	});
-}
+		Object.keys(s).forEach( sup => {
+			// log(sup);
+			if( c.u.cred_used == sup )
+				s[sup].then(_=> {
+					if(s[sup].onUserUpdated)
+						s[sup].onUserUpdated();
+				});
+		});
+	}
 
 	// Workaround for bugs from race conditions in async component loading
 	var polymerLoaded = false;
@@ -455,27 +454,27 @@ function onUserUpdated() {
 	}
 	
 	function onLoad() {
-	c.u = new User(Lockr.get('user'));
+		c.u = new User(Lockr.get('user'));
 
-	if( c.u ) {
-		onUserUpdated();
-	} else {
-		c.u = new User();
-		userUpdate();
+		if( c.u ) {
+			onUserUpdated();
+		} else {
+			c.u = new User();
+			userUpdate();
+		}
+		
+		fromId('logout').onclick = doLogout;
+
+		fromId('p_login').onclick = function(){ s.password.login(true) };
+
+		fromId('g_login').onclick = function(){ s.google.login(true) };
+		
+		fromId('a_login').onclick = function(){ a_login(true) };
+		
+		fromId('a_forget').onclick = doForget;
+
+		considerAutoLogin();
 	}
-	
-	fromId('logout').onclick = doLogout;
-
-	fromId('p_login').onclick = function(){ s.password.login(true) };
-
-	fromId('g_login').onclick = function(){ s.google.login(true) };
-	
-	fromId('a_login').onclick = function(){ a_login(true) };
-	
-	fromId('a_forget').onclick = doForget;
-
-	considerAutoLogin();
-}
 
 
 	// Finish loading and setup
@@ -493,6 +492,6 @@ function onUserUpdated() {
 	}
 
 }();
-	
+
 log("index init");
 </script>
