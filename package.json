@@ -1,18 +1,33 @@
 {
   "name": "auto-login-pwa",
   "version": "0.0.1",
+  "engines": {
+    "node": ">=6.3.1"
+  },
   "description": "Frictionless login with Credential Management API, Google, Facebook or password as a Progressive Web App with Web Components",
   "main": "app.js",
   "dependencies": {
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
-    "multer": "^1.1.0"
+    "multer": "^1.1.0",
+    "neo4j-driver": "^1.1.0-M01",
+    "socket.io": "^1.4.8"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "bower": "^1.4.1",
+    "check-engines": "^1.2.0"
+	},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "preinstall": "check-engines",
+    "postinstall": "bower install",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
   "author": "jonas@liljegren.org",
   "license": "MIT",
-  "keywords": []
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aigan/auto-login-pwa"
+  }
 }
