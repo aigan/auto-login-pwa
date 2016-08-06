@@ -2,7 +2,7 @@
 log('password.js');
 
 var p = alp.s.password;
-var c = alp.c;
+var state = alp.state;
 
 
 p.exec = function(resolve,reject) {
@@ -13,7 +13,7 @@ p.exec = function(resolve,reject) {
 		config.vendor+"/paper-button/paper-button.html"], _=>{
 			p.ready = true;
 			query('form.login-password .submit').onclick = p.loginSubmit;
-			alp.drawLoginWidget();
+			//alp.drawLoginWidget();
 			resolve(); // promise resolved
 		});
 };
@@ -24,8 +24,8 @@ p.login = function() {
 	query('.login-password').style.display = 'block';
 	query('form.login-password').onsubmit = p.loginSubmit;
 
-	if( c.u.name ) {
-		query('paper-input[name=username]').value = c.u.name;
+	if( state.u.name ) {
+		query('paper-input[name=username]').value = state.u.name;
 		query('paper-input[name=password]').focus();
 	} else {
 		query('paper-input[name=username]').focus();
@@ -45,9 +45,9 @@ p.navcredLogin = function(cred, by_click) {
 		if( r.status == 200 ) {
 			log("Auto-Login SUCCESS");
 			alp.notifyStatus("Login success");
-			c.u.loggedin = true;
-			c.u.cred_used = 'password';
-			c.u.cred_id = cred.id;
+			state.u.loggedin = true;
+			state.u.cred_used = 'password';
+			state.u.cred_id = cred.id;
 			alp.userUpdate();
 			alp.onLogin();
 		} else {
@@ -90,11 +90,11 @@ p.onLoginSubmitResponse = function(r, cred) {
 	if( r.status == 200 ) {
 		log("Login SUCCESS");
 		alp.notifyStatus("Login success");
-		c.u.loggedin = true;
-		c.u.cred_used = 'password';
-		c.u.cred_id = cred.id;
+		state.u.loggedin = true;
+		state.u.cred_used = 'password';
+		state.u.cred_id = cred.id;
 		log("About to update user");
-		log(c.u);
+		log(state.u);
 		alp.userUpdate();
 		alp.onLogin();
 	}

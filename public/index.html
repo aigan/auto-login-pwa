@@ -152,17 +152,22 @@ spinner {
 "use strict";
 log('index');
 
-var alp = function(){
-
+const alp = function(){
+	const alpExport = {};
+	
 	class Supplier {
 		constructor(lib, origin) {
 			this.lib = lib;
 			this.origin = origin; // Federated identity providor
 			this.label = null; // Will be set after cunstruction..
-			this.ready = false;
 			this.exec = null;
 			this.promise = null;
 			log("Constructing "+lib);
+
+			mobx.extendObservable(this,{
+				ready: false,
+			});
+			
 		}
 
 		// reject handler somhow called twice here
@@ -170,7 +175,7 @@ var alp = function(){
 			if(!this.promise) {
 				var sup = this;
 				this.promise = new Promise(function(resolve,reject){
-					loadScriptAsync(sup.lib, function(){
+					scriptP(sup.lib).then(function(){
 						//log("Lib loaded. Calling sup.exec");
 						sup.exec(resolve,reject);
 					});
@@ -181,20 +186,10 @@ var alp = function(){
 		}
 	}
 
-	var c = { // Container for things to pass around
-		u: null, // Current user
-	};
-	var s = // Supplier
-	{
-		google: new Supplier('supplier/google.js',"https://accounts.google.com"),
-		password: new Supplier('supplier/password.js'),
-		facebook: {
-			ready: false,
-			origin: "https://www.facebook.com",
-		},
-	};
+	var state; // Container for things to pass around
+	const s = {}; // Supplier
 
-	var originIndex = {};
+	const originIndex = {};
 	for( let sup in s ) {
 		if(!s[sup].origin) continue;
 		originIndex[s[sup].origin] = s[sup];
@@ -204,19 +199,40 @@ var alp = function(){
 
 	// prefix for vendor components, taken form config,
 	// excluding ending slash.
-	var vendor = config.vendor || "bower_components";
+	const vendor = config.vendor || "bower_components";
 	
 	class User {
 		constructor(p) {
 			if(!p) p = {};
-			this.loggedin = p.loggedin || false;
-			this.cred_id = p.cred_id;
-			this.cred_used = p.cred_used;
-			this.s = p.s || {};
+			const obj = {
+				loggedin: p.loggedin || false,
+				cred_id: p.cred_id, 
+				cred_used: p.cred_used,
+				s: p.s || {},
+			};
 
 			for( let sup in s ) {
-				this.s[sup] = this.s[sup] || {};
+				obj.s[sup] = obj.s[sup] || {};
 			}
+
+			mobx.extendObservable(this, obj);
+		}
+
+		
+		static load() {
+			state.u = new User(Lockr.get('user'));
+			mobx.autorun(onUserUpdated);
+
+			Object.keys(s).forEach( sup => {
+				// log(sup);
+				//if( state.u.cred_used == sup )
+					s[sup].then(_=> {
+						if(s[sup].onUserUpdated)
+							mobx.autorun(s[sup].onUserUpdated); // autorun
+					});
+			});
+			
+			mobx.autorun(drawLoginWidget); // autorun
 		}
 	}
 
@@ -228,10 +244,10 @@ var alp = function(){
 
 	function considerAutoLogin() {
 		log("consider autoLogin");
-		if( c.u.loggedin ) {
+		if( state.u.loggedin ) {
 			notifyStatus("Welcome back");
 			onLogin();
-		} else if( c.u.cred_id && c.u.cred_used ) {
+		} else if( state.u.cred_id && state.u.cred_used ) {
 			// Identified but logged out. Respect that
 			notifyStatus("");
 
@@ -244,15 +260,16 @@ var alp = function(){
 					},
 					unmediated: true,
 				}).then( cred => {
-					c.u.cred = cred;
+					state.u.cred = cred;
 					log("Got cred "+cred );
 					if( cred )
 						notifyStatus("Hello again");
-					drawLoginWidget();
+					//drawLoginWidget();
 				});
 			} else {
 				// Load in suppliers
-				s[c.u.cred_used].then( drawLoginWidget );
+				//s[state.u.cred_used].then( drawLoginWidget );
+				s[state.u.cred_used].then();
 			}
 
 		} else {
@@ -269,7 +286,7 @@ var alp = function(){
 			navigator.credentials.requireUserMediation();
 		
 		notifyStatus("Logged out");
-		c.u.loggedin = false;
+		state.u.loggedin = false;
 
 		//Callbacks will remove data just after this update
 		userUpdate();
@@ -285,7 +302,7 @@ var alp = function(){
 			navigator.credentials.requireUserMediation();
 		
 		notifyStatus("Logged out. Remeber to clear your device");
-		c.u = new User();
+		state.u = new User();
 		Lockr.rm('user');
 		onLogout();
 	}
@@ -295,19 +312,19 @@ var alp = function(){
 		fromId('a_login').disabled = true;
 		
 		if(!navigator.credentials) {
-			if( c.u.cred_used ) {
+			if( state.u.cred_used ) {
 				// supplier loaded by considerAutoLogin()
-					return s[c.u.cred_used].login();
+					return s[state.u.cred_used].login();
 			}
 			
 			notifyStatus("Your browser do not support credentials manager");
-			c.u.cred_used = null;
-			drawLoginWidget();
+			state.u.cred_used = null;
+			//drawLoginWidget();
 			return;
 		}
 
-		if( c.u.cred )
-			return navcredLogin(c.u.cred, by_click);
+		if( state.u.cred )
+			return navcredLogin(state.u.cred, by_click);
 
 		log("Getting navcred");
 		navigator.credentials.get({
@@ -317,7 +334,7 @@ var alp = function(){
 			},
 			//		unmediated: by_click?false:true,
 		}).then( cred => {
-			c.u.cred = cred;
+			state.u.cred = cred;
 			navcredLogin(cred, false);
 		} );
 	}
@@ -326,9 +343,9 @@ var alp = function(){
 		if( !cred ) {
 			log("No cred");
 			notifyStatus("No login credentials found");
-			c.u.cred_used = null;
+			state.u.cred_used = null;
 			userUpdate();
-			drawLoginWidget();
+			//drawLoginWidget();
 			return;
 		}
 
@@ -364,8 +381,7 @@ var alp = function(){
 		for(let item of queryAll('header .logged-out')) item.style.display = "flex";
 		for(let item of queryAll('main .logged-out')) item.style.display = "block";
 
-		//autoLogin();
-		drawLoginWidget();
+		//drawLoginWidget();
 	}
 
 	function onGoogleAuthInitFailed(err){
@@ -375,8 +391,7 @@ var alp = function(){
 			spin.remove();
 			log(err);
 			
-			afterLoading('alp-warn', importAsync(["components/alp-warn.html"]), _ => {
-
+			importP("components/alp-warn.html").then(_=>{
 				// The warning should be placed on the button, but will not
 				// follow the button on line wrap. Should rather make this a
 				// real property of the button,
@@ -395,13 +410,15 @@ var alp = function(){
 	}
 	
 	function drawLoginWidget() {
-		if( c.u.cred_used )
-			query('.login-alternatives').setAttribute('cred_used',c.u.cred_used);
-		fromId('a_login').disabled = !c.u.cred_used;
-		if( !c.u.cred_used ) {
+		log("drawLoginWidget");
+
+		if( state.u.cred_used )
+			query('.login-alternatives').setAttribute('cred_used',state.u.cred_used);
+		fromId('a_login').disabled = !state.u.cred_used;
+		if( !state.u.cred_used ) {
 			fromId('p_login').disabled = !s.password.then().ready;
 			fromId('g_login').disabled = !s.google.then(null,onGoogleAuthInitFailed).ready;
-			fromId('f_login').disabled = !s.facebook.ready;
+			//fromId('f_login').disabled = !s.facebook.ready;
 		} else {
 			fromId('p_login').disabled = true;
 			fromId('g_login').disabled = true;
@@ -411,58 +428,55 @@ var alp = function(){
 
 	function userUpdate() {
 		Lockr.set('user', {
-			cred_id: c.u.cred_id,
-			loggedin: c.u.loggedin,
-			cred_used: c.u.cred_used,
-			s: c.u.s,
+			cred_id: state.u.cred_id,
+			loggedin: state.u.loggedin,
+			cred_used: state.u.cred_used,
+			s: state.u.s,
 		});
 		onUserUpdated();
 	}
 
 	function onUserUpdated() {
+		log("main onUserUpdated");
 		query('.user-info .local').innerHTML =
-		`cred_id: ${c.u.cred_id}\ncred: ${c.u.cred_used}`;
-
+		`cred_id: ${state.u.cred_id}\ncred: ${state.u.cred_used}`;
+/*
 		Object.keys(s).forEach( sup => {
 			// log(sup);
-			if( c.u.cred_used == sup )
+			if( state.u.cred_used == sup )
 				s[sup].then(_=> {
 					if(s[sup].onUserUpdated)
 						s[sup].onUserUpdated();
 				});
 		});
+*/
 	}
 
 	// Workaround for bugs from race conditions in async component loading
 	var polymerLoaded = false;
-	function polymer(list,f) {
+	function polymer(list,fn) { // Simpler to use callback here
 		if(!polymerLoaded){
 			log("Polymer");
-			let link = document.createElement('link');
-			link.setAttribute('rel', 'import');
-			link.setAttribute('href', vendor+"/polymer/polymer-micro.html");
-			link.setAttribute('async', true);
-			link.onload = function(){
+			importP(vendor+"/polymer/polymer-micro.html").then(_=>{
 				polymerLoaded = true;
-				polymer(list,f);
-			};
-			document.body.appendChild(link);
+				polymer(list,fn);
+			});
 			return;
 		}
-
 		var label = list[0].match(/([^\/]+)\.html/i)[1] || list[0];
-		afterLoading(label, importAsync(list), f);
+		log("Importing "+label);
+		return Promise.all(list.map((url)=>importP(url))).then(fn);
 	}
-	
-	function onLoad() {
-		c.u = new User(Lockr.get('user'));
 
-		if( c.u ) {
-			onUserUpdated();
-		} else {
-			c.u = new User();
-			userUpdate();
-		}
+	function onLoad() {
+		alpExport.state = state = mobx.observable({
+			u: null, // Current user
+		});
+
+		s.google =  new Supplier('supplier/google.js',"https://accounts.google.com");
+		s.password = new Supplier('supplier/password.js');
+
+		User.load();
 		
 		fromId('logout').onclick = doLogout;
 
@@ -479,18 +493,21 @@ var alp = function(){
 
 
 	// Finish loading and setup
-	loadScriptAsync(vendor+"/lockr/lockr.min.js", onLoad);
+	Promise.all([
+		scriptP(vendor+"/lockr/lockr.min.js"),
+		scriptP(vendor+"/mobx/lib/mobx.umd.min.js"),
+	]).then(onLoad);
 
-	return {
-		s: s,
-		c: c,
-		drawLoginWidget: drawLoginWidget,
-		onUserUpdated: onUserUpdated,
-		notifyStatus: notifyStatus,
-		userUpdate: userUpdate,
-		onLogin: onLogin,
-		polymer: polymer,
-	}
+	alpExport.s = s;
+	//alpExport.state = state; // set onLoad
+	alpExport.drawLoginWidget = drawLoginWidget;
+	alpExport.onUserUpdated = onUserUpdated;
+	alpExport.notifyStatus = notifyStatus;
+	alpExport.userUpdate = userUpdate;
+	alpExport.onLogin = onLogin;
+	alpExport.polymer = polymer;
+
+	return alpExport;
 
 }();
 

@@ -2,11 +2,13 @@
 log('google.js');
 
 var g = alp.s.google;
-var c = alp.c;
+var state = alp.state;
 
 
 g.exec = function(resolve,reject) {
-	loadScriptAsync("//apis.google.com/js/platform.js", function(){
+	scriptP("//apis.google.com/js/platform.js").then(_=>{
+
+//	loadScriptAsync("//apis.google.com/js/platform.js", function(){
 		gapi.load('auth2', function() {
 			var conf = config.google;
 			conf.fetch_basic_profile = false;
@@ -30,7 +32,7 @@ g.exec = function(resolve,reject) {
 				}
 				clearTimeout(timeout);
 				g.ready = true;
-				alp.drawLoginWidget();
+				//alp.drawLoginWidget();
 				resolve(); // promise resolved
 			});
 		});
@@ -60,12 +62,12 @@ g.navcredLogin = function( cred, by_click ) {
 		// Best would be to just use the stored info and only ask for
 		// re-login then actually needed, directly on user interaction.
 		
-		var gu = c.u.s.google;
+		var gu = state.u.s.google;
 		gu.loggedin = false;
 		gu.cred_id = cred.id;
-		c.u.loggedin = true;
-		c.u.cred_id = cred.id;
-		c.u.cred_used = 'google';
+		state.u.loggedin = true;
+		state.u.cred_id = cred.id;
+		state.u.cred_used = 'google';
 		alp.userUpdate();
 
 		alp.onLogin();
@@ -116,12 +118,14 @@ g.onLoginSuccess = function(store_cred) {
 
 	var auth2 = gapi.auth2.getAuthInstance();
 	var g_user = auth2.currentUser.get();
+
+//	alp.autorun(onUserUpdated);
 	
 	g.getUserinfo().then( p => {
 		var uid = p.email || g_user.getId();
 		var name = p.name;
 		var image = p.picture;
-		var gu = c.u.s.google;
+		var gu = state.u.s.google;
 
 		if(!!navigator.credentials && store_cred ) {
 			// Create `Credential` object for federation
@@ -136,9 +140,9 @@ g.onLoginSuccess = function(store_cred) {
 			gu.cred_id = uid;
 		}
 		
-		c.u.loggedin = true;
-		c.u.cred_id = uid;
-		c.u.cred_used = 'google';
+		state.u.loggedin = true;
+		state.u.cred_id = uid;
+		state.u.cred_used = 'google';
 		gu.loggedin = true;
 		gu.id = g_user.getId();
 		alp.userUpdate();
@@ -171,7 +175,7 @@ g.getEmail = function() { // primary email address
 }
 
 g.onUserUpdated = function() {
-	log("onUserUpdated");
+	log("google onUserUpdated");
 	if( !g.ready ) return;
 
 	var pre = query('.user-info .google');
@@ -187,7 +191,7 @@ g.onUserUpdated = function() {
 		log("Google offline");
 		out += " offline";
 	}
-	out += "\nGoogleUser id: "+c.u.s.google.id;
+	out += "\nGoogleUser id: "+state.u.s.google.id;
 
 	var scopes = g_user.getGrantedScopes();
 	if( scopes ) {
@@ -270,7 +274,7 @@ g.onUserUpdated = function() {
 	}
 
 	// Se https://developers.google.com/identity/protocols/googlescopes
-	if( g_user && !online && c.u.loggedin ) {
+	if( g_user && !online && state.u.loggedin ) {
 		var t_login = document.createElement('button');
 		t_login.innerHTML = "Login with Google";
 		t_login.onclick = function(){

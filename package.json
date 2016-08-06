@@ -9,17 +9,19 @@
   "dependencies": {
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "mobx": "^2.4.1",
     "multer": "^1.1.0",
     "neo4j-driver": "^1.1.0-M01",
     "socket.io": "^1.4.8"
   },
   "devDependencies": {
     "bower": "^1.4.1",
-    "check-engines": "^1.2.0"
-	},
+    "check-engines": "^1.2.0",
+    "gulp": ">=3.9.0"
+  },
   "scripts": {
     "preinstall": "check-engines",
-    "postinstall": "bower install",
+    "postinstall": "bower install; gulp bower-copy",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js"
   },
