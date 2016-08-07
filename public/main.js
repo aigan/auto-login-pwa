@@ -7,8 +7,7 @@ const fromId = document.getElementById.bind(document);
 //var fromClass = document.getElementsByClassName.bind(document);
 //var fromTag = document.getElementsByTagName.bind(document);
 
-log("main.js");
-
+log("main");
 
 function importP(url){
 	return new Promise(function(resolve,reject){

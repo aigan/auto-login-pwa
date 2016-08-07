@@ -1,0 +1,8 @@
+module.exports = {
+	neo4j: {
+		auth: ["neo4j", "neo4j"],
+	},
+	server: {
+		root: '/alp',
+	},
+};

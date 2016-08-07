@@ -36,5 +36,11 @@ gulp.task('bower-copy', () => {
 	], {
 		dot: true
 	}).pipe(gulp.dest(dir+'/mobx'))
+
+	gulp.src([
+		'node_modules/socket.io-client/**'
+	], {
+		dot: true
+	}).pipe(gulp.dest(dir+'/socket.io'))
+
 });
-					
