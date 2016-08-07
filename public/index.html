@@ -212,7 +212,7 @@ const alp = function(){
 			};
 
 			for( let sup in s ) {
-				obj.s[sup] = obj.s[sup] || {};
+				obj.s[sup] = obj.s[sup] || {loggedin:null};
 			}
 
 			mobx.extendObservable(this, obj);
@@ -369,19 +369,11 @@ const alp = function(){
 	}
 
 	function onLogin() {
-		for(var item of queryAll('header .logged-in')) item.style.display = "flex";
-		for(var item of queryAll('main .logged-in')) item.style.display = "block";
-		for(var item of queryAll('.logged-out')) item.style.display = "none";
-		query('.login-alternatives').style.display = 'block';
-		query('.login-password').style.display = 'none';
+		state.view.page = '/';
 	}
 
 	function onLogout() {
-		for(let item of queryAll('.logged-in')) item.style.display = "none";
-		for(let item of queryAll('header .logged-out')) item.style.display = "flex";
-		for(let item of queryAll('main .logged-out')) item.style.display = "block";
-
-		//drawLoginWidget();
+		state.view.page = '/login';
 	}
 
 	function onGoogleAuthInitFailed(err){
@@ -412,6 +404,27 @@ const alp = function(){
 	function drawLoginWidget() {
 		log("drawLoginWidget");
 
+		const t_login_alts = query('.login-alternatives');
+		const u = state.u;
+		if( u.loggedin ) {
+			for(var item of queryAll('header .logged-in')) item.style.display = "flex";
+			for(var item of queryAll('main .logged-in')) item.style.display = "block";
+			for(var item of queryAll('.logged-out')) item.style.display = "none";
+			return;
+		}
+
+		for(let item of queryAll('.logged-in')) item.style.display = "none";
+		for(let item of queryAll('header .logged-out')) item.style.display = "flex";
+		for(let item of queryAll('main .logged-out')) item.style.display = "block";
+
+		if( state.view.page != '/login' ) {
+			t_login_alts.style.display = 'none';
+			return;
+		} 
+
+		t_login_alts.style.display = 'block';
+
+		
 		if( state.u.cred_used )
 			query('.login-alternatives').setAttribute('cred_used',state.u.cred_used);
 		fromId('a_login').disabled = !state.u.cred_used;
@@ -433,7 +446,6 @@ const alp = function(){
 			cred_used: state.u.cred_used,
 			s: state.u.s,
 		});
-		onUserUpdated();
 	}
 
 	function onUserUpdated() {
@@ -471,6 +483,10 @@ const alp = function(){
 	function onLoad() {
 		alpExport.state = state = mobx.observable({
 			u: null, // Current user
+			view: {  // Current selection of what to view
+				page: '/login',
+				// other data goes here
+			}
 		});
 
 		s.google =  new Supplier('supplier/google.js',"https://accounts.google.com");
@@ -500,8 +516,8 @@ const alp = function(){
 
 	alpExport.s = s;
 	//alpExport.state = state; // set onLoad
-	alpExport.drawLoginWidget = drawLoginWidget;
-	alpExport.onUserUpdated = onUserUpdated;
+	//alpExport.drawLoginWidget = drawLoginWidget;
+	//alpExport.onUserUpdated = onUserUpdated;
 	alpExport.notifyStatus = notifyStatus;
 	alpExport.userUpdate = userUpdate;
 	alpExport.onLogin = onLogin;

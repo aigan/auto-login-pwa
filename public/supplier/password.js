@@ -18,11 +18,16 @@ p.exec = function(resolve,reject) {
 		});
 };
 
-p.login = function() {
+p.render = function() {
+	const section = query('.login-password')
+	if( state.view.page != '/login/password' ){
+		section.style.display = 'none';
+		return;
+	}
+
 	log("p.login");
-	query('.login-alternatives').style.display = 'none';
-	query('.login-password').style.display = 'block';
-	query('form.login-password').onsubmit = p.loginSubmit;
+	section.style.display = 'block';
+	section.onsubmit = p.loginSubmit;
 
 	if( state.u.name ) {
 		query('paper-input[name=username]').value = state.u.name;
@@ -32,6 +37,10 @@ p.login = function() {
 	}
 }
 
+p.login = function(){
+	state.view.page = '/login/password';
+	mobx.autorun( p.render );
+}
 
 p.navcredLogin = function(cred, by_click) {
 	var form = new FormData();

@@ -40,6 +40,7 @@ g.exec = function(resolve,reject) {
 };
 
 
+//== ACTION
 // MUST BE CALLED WITHOUT INDIRECTION
 g.navcredLogin = function( cred, by_click ) {
 
@@ -62,7 +63,7 @@ g.navcredLogin = function( cred, by_click ) {
 		// Best would be to just use the stored info and only ask for
 		// re-login then actually needed, directly on user interaction.
 		
-		var gu = state.u.s.google;
+		const gu = state.u.s.google;
 		gu.loggedin = false;
 		gu.cred_id = cred.id;
 		state.u.loggedin = true;
@@ -86,8 +87,9 @@ g.navcredLogin = function( cred, by_click ) {
 		log("Failed");
 		alp.notifyStatus("You denied access to Google login");
 	});
-}
+};
 
+//== ACTION
 g.login = function( store_cred ) {
 	log("Trying to login with Google");
 	var auth2 = gapi.auth2.getAuthInstance();
@@ -112,24 +114,22 @@ g.login = function( store_cred ) {
 	}
 }
 
+//== ACTION
 g.onLoginSuccess = function(store_cred) {
 	log("Signed in");
 	alp.notifyStatus("Signed in with Google");
 
-	var auth2 = gapi.auth2.getAuthInstance();
-	var g_user = auth2.currentUser.get();
+	const u = state.u;
+	const gu = u.s.google;
+	g.pullUserInfo().then(_=>{
 
-//	alp.autorun(onUserUpdated);
-	
-	g.getUserinfo().then( p => {
-		var uid = p.email || g_user.getId();
-		var name = p.name;
-		var image = p.picture;
-		var gu = state.u.s.google;
+		const uid = gu.email || gu.id;
+		const name = gu.name;
+		const image = gu.picture;
 
 		if(!!navigator.credentials && store_cred ) {
 			// Create `Credential` object for federation
-			var cred = new FederatedCredential({
+			const cred = new FederatedCredential({
 				id:				uid,
 				name:			name,
 				iconURL:	 image,
@@ -140,16 +140,13 @@ g.onLoginSuccess = function(store_cred) {
 			gu.cred_id = uid;
 		}
 		
-		state.u.loggedin = true;
-		state.u.cred_id = uid;
-		state.u.cred_used = 'google';
-		gu.loggedin = true;
-		gu.id = g_user.getId();
+		u.loggedin = true;
+		u.cred_id = uid;
+		u.cred_used = 'google';
 		alp.userUpdate();
-
 		alp.onLogin();
 	});
-}
+};
 
 g.getUserinfo = function() {
 	return new Promise(function(resolve,reject){
@@ -166,34 +163,77 @@ g.getUserinfo = function() {
 			});
 		});
 	});
-}
+};
 
-g.getEmail = function() { // primary email address
-	return new Promise(function(resolve,reject){
-		g.getUserinfo().then(resp=>resolve(resp.email));
-	});
-}
 
+// ACTION
+g.pullUserInfo = function(update){
+	log("google pullUserInfo");
+
+	const auth2 = gapi.auth2.getAuthInstance();
+	const g_user = auth2.currentUser.get();
+	const gu = state.u.s.google;
+
+	gu.updated  = new Date();
+	gu.loggedin = g_user.isSignedIn();
+	gu.id       = g_user.getId();
+	gu.scopes   = g_user.getGrantedScopes();
+	gu.auth     = g_user.getAuthResponse();
+	
+	const g_profile = g_user.getBasicProfile();
+	if( g_profile ) { // Usually disabled. No scope
+		gu.name        = g_profile.getName();
+		gu.name_given  = g_profile.getGivenName();
+		gu.name_family = g_profile.getFamilyName();
+		gu.picture     = g_profile.getImageUrl();
+		gu.email       = g_profile.getEmail();
+	}
+
+	if( gu.loggedin ) {
+		return g.getUserinfo()
+			.then(info => {
+				gu.name           = info.name;
+				gu.name_given     = info.given_name;
+				gu.name_family    = info.family_name;
+				gu.gender         = info.gender;
+				gu.picture        = info.picture;
+				gu.link           = info.link;
+				gu.email          = info.email;
+				gu.email_verified = info.verified_email;
+				delete gu.error;
+			})
+			.catch(err=>{
+				gu.error          = err;
+			});
+	}
+
+	return Promise.resolve();
+};
+	
+//== REACTION
 g.onUserUpdated = function() {
 	log("google onUserUpdated");
+	
 	if( !g.ready ) return;
+	const gu = state.u.s.google;
 
+	// For action callbacks on THIS user
+	const auth2 = gapi.auth2.getAuthInstance();
+	const g_user = auth2.currentUser.get();
+	
 	var pre = query('.user-info .google');
 	var out = "Google:";
-	var auth2 = gapi.auth2.getAuthInstance();
-	var g_user = auth2.currentUser.get();
 
-	var online = g_user.isSignedIn();
+	var online = gu.loggedin;
 	if( online ){
-		log("Google online");
 		out += " online";
 	} else {
 		log("Google offline");
 		out += " offline";
 	}
-	out += "\nGoogleUser id: "+state.u.s.google.id;
+	out += "\nGoogleUser id: "+gu.id;
 
-	var scopes = g_user.getGrantedScopes();
+	var scopes = gu.scopes;
 	if( scopes ) {
 		out += "\nScopes";
 		for(let scope of scopes.split(' ') ){
@@ -201,64 +241,43 @@ g.onUserUpdated = function() {
 		}
 		//								 out += "\n"+scopes;
 	}
-
-	var has_email = ( g_user.hasGrantedScopes('https://www.googleapis.com/auth/userinfo.email') || g_user.hasGrantedScopes('userinfo.email') );
-
-	if( has_email ) {
-		//								 get_email.then(e=>{ out += "\nEmail: "+e });
-	}
 	
-	
-	var g_profile= g_user.getBasicProfile();
-	if( g_profile ) {
-		out += "\nProfile";
-		out += "\n	name: "+ g_profile.getName();
-		out += "\n	given name: "+ g_profile.getGivenName();
-		out += "\n	family name: "+ g_profile.getFamilyName();
-		//								 out += "\n	 image url: "+ g_profile.getImageUrl();
-		out += "\n	email: "+ g_profile.getEmail();
-	}
-
-	var auth = g_user.getAuthResponse();
+	var auth = gu.auth;
 	if( auth && online ) {
 		out += "\nIssued at "+new Date(auth.first_issued_at);
 		out += "\nExpires at "+new Date(auth.expires_at);
 		out += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
-		
-		//out += "\n"+JSON.stringify(auth);
-		//out += "\nProfile name: "+ g_profile.getName();
 	}
 	pre.innerHTML = out +"\n\n";
 
 	if( online ) {
-		g.getUserinfo().then(info=>{
-			var t_info = document.createElement('pre');
-			let out = "name: "+ info.name;
-			out += "\ngiven name: "+ info.given_name;
-			out += "\nfamily name: "+ info.family_name;
-			out += "\nGender: "+ info.gender;
-			out += "\nimage url: "+ info.picture;
-			out += "\nprofile url: "+ info.link;
-			out += "\nprimary email: "+ info.email;
-			if( info.email )
-				out += "\nemail verified: "+ (info.verified_email?'Yes':'No');
-			t_info.innerHTML = out;
-			pre.appendChild(t_info);
-		}).catch(err=>{
-			var t_info = document.createElement('pre');
-			t_info.innerHTML = "Could not get userinfo: "+err.message;
-			pre.appendChild(t_info);
-		});
+		var t_info = document.createElement('pre');
+		let out = "name: "+ gu.name;
+		out += "\ngiven name: "+ gu.name_given;
+		out += "\nfamily name: "+ gu.name_family;
+		out += "\nGender: "+ gu.gender;
+		out += "\nimage url: "+ gu.picture;
+		out += "\nprofile url: "+ gu.link;
+		out += "\nprimary email: "+ gu.email;
+		if( gu.email )
+			out += "\nemail verified: "+ (gu.email_verified?'Yes':'No');
+		t_info.innerHTML = out;
+		pre.appendChild(t_info);
 
+		if( gu.error ) {
+			var t_info = document.createElement('pre');
+			t_info.innerHTML = "Could not get userinfo: "+error.message;
+			pre.appendChild(t_info);
+		};
 
 		var t_revoke = document.createElement('button');
 		t_revoke.innerHTML = "Revoke";
 		t_revoke.onclick = function(){
-			g_user.disconnect().then( alp.onUserUpdated );
+			gu.loggedin = false;
+			g_user.disconnect();//.then( g.onUserUpdated );
 		};
 		pre.appendChild(t_revoke);
 
-		
 		var t_email = document.createElement('button');
 		t_email.innerHTML = "Google email";
 		t_email.onclick = function(){
@@ -290,8 +309,9 @@ g.onUserUpdated = function() {
 		};
 		pre.appendChild(t_login);
 	}
-}
+};
 
+//== ACTION
 g.forget = function() {
 	if( g.ready ) {
 		var auth2 = gapi.auth2.getAuthInstance();
@@ -300,11 +320,12 @@ g.forget = function() {
 				console.log('User signed out from Google');
 				// Only effective with auth2.signIn({prompt:'select_account'})
 				auth2.disconnect();
-				alp.onUserUpdated();
+				state.u.s.google.loggedin = false;
+				//g.onUserUpdated();
 			});
 		}
 	}
-}
+};
 
 g.logout = g.forget;
 
