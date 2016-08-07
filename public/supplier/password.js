@@ -1,7 +1,7 @@
 "use strict";
 log('password.js');
 
-var p = alp.s.password;
+var p = alp.supplier.password;
 var state = alp.state;
 
 
@@ -13,7 +13,8 @@ p.exec = function(resolve,reject) {
 		config.vendor+"/paper-button/paper-button.html"], _=>{
 			p.ready = true;
 			query('form.login-password .submit').onclick = p.loginSubmit;
-			//alp.drawLoginWidget();
+
+			//mobx.autorun(p.onUserUpdated);
 			resolve(); // promise resolved
 		});
 };
@@ -57,8 +58,6 @@ p.navcredLogin = function(cred, by_click) {
 			state.u.loggedin = true;
 			state.u.cred_used = 'password';
 			state.u.cred_id = cred.id;
-			alp.userUpdate();
-			alp.onLogin();
 		} else {
 			log("Login failed");
 			alp.notifyStatus("Login failed");
@@ -103,9 +102,6 @@ p.onLoginSubmitResponse = function(r, cred) {
 		state.u.cred_used = 'password';
 		state.u.cred_id = cred.id;
 		log("About to update user");
-		log(state.u);
-		alp.userUpdate();
-		alp.onLogin();
 	}
 	else {
 		log("Login failed");

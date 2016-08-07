@@ -1,7 +1,7 @@
 "use strict";
 log('google.js');
 
-var g = alp.s.google;
+var g = alp.supplier.google;
 var state = alp.state;
 
 
@@ -32,7 +32,8 @@ g.exec = function(resolve,reject) {
 				}
 				clearTimeout(timeout);
 				g.ready = true;
-				//alp.drawLoginWidget();
+
+				mobx.autorun(g.onUserUpdated);
 				resolve(); // promise resolved
 			});
 		});
@@ -42,7 +43,7 @@ g.exec = function(resolve,reject) {
 
 //== ACTION
 // MUST BE CALLED WITHOUT INDIRECTION
-g.navcredLogin = function( cred, by_click ) {
+g.navcredLogin = mobx.action( function( cred, by_click ) {
 
 	// Se https://developers.google.com/identity/protocols/googlescopes
 	var auth2 = gapi.auth2.getAuthInstance();
@@ -63,15 +64,13 @@ g.navcredLogin = function( cred, by_click ) {
 		// Best would be to just use the stored info and only ask for
 		// re-login then actually needed, directly on user interaction.
 		
-		const gu = state.u.s.google;
+		const gu = state.u.supplier.google;
 		gu.loggedin = false;
 		gu.cred_id = cred.id;
 		state.u.loggedin = true;
 		state.u.cred_id = cred.id;
 		state.u.cred_used = 'google';
-		alp.userUpdate();
 
-		alp.onLogin();
 		alp.notifyStatus("Welcome back");
 		return;
 	}
@@ -87,7 +86,7 @@ g.navcredLogin = function( cred, by_click ) {
 		log("Failed");
 		alp.notifyStatus("You denied access to Google login");
 	});
-};
+});
 
 //== ACTION
 g.login = function( store_cred ) {
@@ -115,12 +114,12 @@ g.login = function( store_cred ) {
 }
 
 //== ACTION
-g.onLoginSuccess = function(store_cred) {
+g.onLoginSuccess = mobx.action( function(store_cred) {
 	log("Signed in");
 	alp.notifyStatus("Signed in with Google");
 
 	const u = state.u;
-	const gu = u.s.google;
+	const gu = u.supplier.google;
 	g.pullUserInfo().then(_=>{
 
 		const uid = gu.email || gu.id;
@@ -143,10 +142,8 @@ g.onLoginSuccess = function(store_cred) {
 		u.loggedin = true;
 		u.cred_id = uid;
 		u.cred_used = 'google';
-		alp.userUpdate();
-		alp.onLogin();
 	});
-};
+});
 
 g.getUserinfo = function() {
 	return new Promise(function(resolve,reject){
@@ -167,12 +164,12 @@ g.getUserinfo = function() {
 
 
 // ACTION
-g.pullUserInfo = function(update){
+g.pullUserInfo = mobx.action(function(update){
 	log("google pullUserInfo");
 
 	const auth2 = gapi.auth2.getAuthInstance();
 	const g_user = auth2.currentUser.get();
-	const gu = state.u.s.google;
+	const gu = state.u.supplier.google;
 
 	gu.updated  = new Date();
 	gu.loggedin = g_user.isSignedIn();
@@ -208,14 +205,14 @@ g.pullUserInfo = function(update){
 	}
 
 	return Promise.resolve();
-};
+});
 	
 //== REACTION
 g.onUserUpdated = function() {
 	log("google onUserUpdated");
 	
 	if( !g.ready ) return;
-	const gu = state.u.s.google;
+	const gu = state.u.supplier.google;
 
 	// For action callbacks on THIS user
 	const auth2 = gapi.auth2.getAuthInstance();
@@ -274,7 +271,7 @@ g.onUserUpdated = function() {
 		t_revoke.innerHTML = "Revoke";
 		t_revoke.onclick = function(){
 			gu.loggedin = false;
-			g_user.disconnect();//.then( g.onUserUpdated );
+			g_user.disconnect();
 		};
 		pre.appendChild(t_revoke);
 
@@ -320,8 +317,7 @@ g.forget = function() {
 				console.log('User signed out from Google');
 				// Only effective with auth2.signIn({prompt:'select_account'})
 				auth2.disconnect();
-				state.u.s.google.loggedin = false;
-				//g.onUserUpdated();
+				state.u.supplier.google.loggedin = false;
 			});
 		}
 	}
