@@ -3,7 +3,8 @@ log('password.js');
 {
 	const p = alp.supplier.password;
 	const state = alp.state;
-
+	const base = config.server.root;
+	
 
 	p.exec = function(resolve,reject) {
 		//	var imports = queryAll('link[rel="import"]');
@@ -48,7 +49,7 @@ log('password.js');
 		form.append('csrf_token', 'maby');
 		cred.additionalData = form;
 
-		fetch("/app1/welcome", {
+		fetch(base+"/welcome", {
 			method: 'POST',
 			credentials: cred,
 		}).then(r => {
@@ -77,13 +78,13 @@ log('password.js');
 				.then(function() {
 					alp.notifyStatus("Save the password for faster login next time");
 					log("Stored creds");
-					fetch("/app1/welcome", {
+					fetch(base+"/welcome", {
 						method: 'POST',
 						credentials: cred,
 					}).then(r=>p.onLoginSubmitResponse(r,cred));
 				});
 		} else {
-			fetch("/app1/welcome", {
+			fetch(base+"/welcome", {
 				method: 'POST',
 				body: new FormData(form),
 			}).then(r=>p.onLoginSubmitResponse(r,{
