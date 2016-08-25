@@ -57,11 +57,13 @@ const alp = function(){
 				loggedin: p.loggedin || false,
 				cred_id: p.cred_id, 
 				cred_used: p.cred_used,
-				supplier: p.supplier || {},
+				//supplier: p.supplier || {},
+				supplier: {},
 			};
 
 			for( let sup in supplier ) {
-				obj.supplier[sup] = obj.supplier[sup] || {loggedin:null};
+				//obj.supplier[sup] = obj.supplier[sup] || mobx.observable({loggedin:null});
+				obj.supplier[sup] = mobx.observable({loggedin:null});
 			}
 
 			mobx.extendObservable(this, obj);
@@ -271,7 +273,7 @@ const alp = function(){
 			cred_id: state.u.cred_id,
 			loggedin: state.u.loggedin,
 			cred_used: state.u.cred_used,
-			s: state.u.s,
+			//supplier: state.u.supplier,
 		});
 	}
 

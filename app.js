@@ -26,7 +26,8 @@ app.get(base, function (req, res) {
 app.post(base+'/welcome', upload.array(), function (req, res, next) {
 //    log(req.rawBody);
     log("In POST to welcome");
-    log(JSON.stringify( req.body ));
+  log(JSON.stringify( req.body ));
+	log(req.headers);
     res.send('ALP: Welcome!');
 });
 
@@ -53,7 +54,7 @@ io.on('connection', function (socket) {
 
 		if(!session) return fn({error:'failed'});
 		
-		const response = { sid: session.sid };
+		const response = { sidBrowser: session.sidBrowser };
 		if(!proof.accessToken)
 			response.accessToken = session.accessToken;
 		log(session);
@@ -82,7 +83,7 @@ function getSession( hs, proof ){
 
 		sessions[sid] = {
 			date: date,
-			sid: sid,
+			sidBrowser: sid,
 			accessToken: accessToken,
 		};
 	}
@@ -90,10 +91,14 @@ function getSession( hs, proof ){
 	const session = sessions[sid];
 
 	//// Update session with stuff...
-	session.ip = hs.headers['x-forwarded-for'] || hs.address;
-	session.host = hs.headers.host;
+	//session.ip = hs.headers['x-forwarded-for'] || hs.address;
+	//session.host = hs.headers.host;
 	session.credId = proof.credId;
 	session.credUsed = proof.credUsed;
+
+	hs.sidTab = proof.sidTab;
+	log(hs);
+
 	
 	return session;
 }

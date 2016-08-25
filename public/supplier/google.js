@@ -66,7 +66,7 @@ log('google.js');
 			// Best would be to just use the stored info and only ask for
 			// re-login then actually needed, directly on user interaction.
 			
-			const gu = state.u.supplier.google;
+			const gu = g.google_user();
 			gu.loggedin = false;
 			gu.cred_id = cred.id;
 			state.u.loggedin = true;
@@ -121,7 +121,7 @@ log('google.js');
 		alp.notifyStatus("Signed in with Google");
 
 		const u = state.u;
-		const gu = u.supplier.google;
+		const gu = g.google_user();
 		g.pullUserInfo().then(_=>{
 
 			const uid = gu.email || gu.id;
@@ -171,7 +171,7 @@ log('google.js');
 
 		const auth2 = gapi.auth2.getAuthInstance();
 		const g_user = auth2.currentUser.get();
-		const gu = state.u.supplier.google;
+		const gu = g.google_user();
 
 		gu.updated  = new Date();
 		gu.loggedin = g_user.isSignedIn();
@@ -214,7 +214,7 @@ log('google.js');
 		log("google onUserUpdated");
 		
 		if( !g.ready ) return;
-		const gu = state.u.supplier.google;
+		const gu = g.google_user();
 
 		// For action callbacks on THIS user
 		const auth2 = gapi.auth2.getAuthInstance();
@@ -326,6 +326,32 @@ log('google.js');
 	};
 
 	g.logout = g.forget;
+
+	g.google_user = function() {
+		
+		if( ! state.u.supplier.google.initiated ){
+			log("Extending google_user");
+			mobx.extendObservable( state.u.supplier.google, {
+				cred_id: null,
+				email: null,
+				id: null,
+				name: null,
+				picture: null,
+				updated: null,
+				scopes: null,
+				auth: null,
+				name_given: null,
+				name_family: null,
+				gender: null,
+				link: null,
+				email_verified: null,
+				error: null,
+				initiated: true,
+			});
+		}
+
+		return state.u.supplier.google;
+	}
 
 }
 log("google.js init");
