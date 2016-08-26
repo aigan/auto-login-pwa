@@ -25,7 +25,7 @@ const alp = function(){
 				var sup = this;
 				this.promise = new Promise(function(resolve,reject){
 					scriptP(sup.lib).then(function(){
-						log("Lib %s loaded. Calling sup.exec", sup.label);
+						log("Lib %s loaded", sup.origin);
 						sup.exec(resolve,reject);
 					});
 				});
@@ -57,13 +57,14 @@ const alp = function(){
 				loggedin: p.loggedin || false,
 				cred_id: p.cred_id, 
 				cred_used: p.cred_used,
-				//supplier: p.supplier || {},
-				supplier: {},
+				accessToken: null,
+				supplier: p.supplier || {},
+				//supplier: {},
 			};
 
 			for( let sup in supplier ) {
-				//obj.supplier[sup] = obj.supplier[sup] || mobx.observable({loggedin:null});
-				obj.supplier[sup] = mobx.observable({loggedin:null});
+				obj.supplier[sup] = obj.supplier[sup] || mobx.observable({loggedin:null});
+				//obj.supplier[sup] = mobx.observable({loggedin:null});
 			}
 
 			mobx.extendObservable(this, obj);
@@ -71,7 +72,9 @@ const alp = function(){
 
 		
 		static load() {
-			state.u = new User(Lockr.get('user'));
+			const ss = window.localStorage;
+			log(ss.getItem('user'));
+			state.u = new User(JSON.parse(ss.getItem('user')));
 
 			// Just loading the supplier used for login
 			if( state.u.cred_used )
@@ -142,7 +145,8 @@ const alp = function(){
 		
 		notifyStatus("Logged out. Remeber to clear your device");
 		state.u = new User();
-		Lockr.rm('user');
+		const ss = window.localStorage;
+		ss.removeItem('user');
 	}
 
 	function a_login(by_click) {
@@ -269,12 +273,16 @@ const alp = function(){
 
 	function userUpdate() {
 		log("main userUpdate");
-		Lockr.set('user', {
+
+		//log( JSON.stringify(mobx.toJS(state.u.supplier)) );
+
+		const ss = window.localStorage;
+		ss.setItem('user', JSON.stringify({
 			cred_id: state.u.cred_id,
 			loggedin: state.u.loggedin,
 			cred_used: state.u.cred_used,
-			//supplier: state.u.supplier,
-		});
+			supplier: mobx.toJS(state.u.supplier),
+		}));
 	}
 
 	function onUserUpdated() {
@@ -354,7 +362,7 @@ const alp = function(){
 
 	// Finish loading and setup
 	Promise.all([
-		scriptP(vendor+"/lockr/lockr.min.js"),
+		//scriptP(vendor+"/lockr/lockr.min.js"),
 		scriptP(vendor+"/mobx/lib/mobx.umd.min.js"),
 	]).then(onLoad);
 

@@ -4,8 +4,10 @@ bodyParser = require('body-parser'),
 multer  = require('multer'),
 httpM = require('http'),
 ioM = require('socket.io'),
-conf = require('./serverconf')
+googleIdTokenVerifier = require('google-id-token-verifier'),
+confServer = require('./serverconf')
 ;
+require('./public/config.js'); // sets GLOBAL.config
 
 const app = expressM();
 const upload = multer();
@@ -18,7 +20,7 @@ app.use(bodyParser.urlencoded({ extended: true}));
 
 const sessions = {}; // browserSession (across tabs)
 
-const base = conf.server.root;
+const base = confServer.server.root;
 app.get(base, function (req, res) {
     res.send('ALP: Hello World!');
 });
@@ -27,7 +29,7 @@ app.post(base+'/welcome', upload.array(), function (req, res, next) {
 //    log(req.rawBody);
     log("In POST to welcome");
   log(JSON.stringify( req.body ));
-	log(req.headers);
+//	log(req.headers);
     res.send('ALP: Welcome!');
 });
 
@@ -48,22 +50,46 @@ io.on('connection', function (socket) {
 		log('Closed    %s: %s sockets', socket.id, connLen);
 	});
 	
-  socket.on('hello', function (proof, fn) {
+  socket.on('hello', function(proof, fn) {
     log("GOT HELLO");
-		const session = getSession( socket.handshake, proof );
+		const session = setSession( socket.handshake, proof );
 
 		if(!session) return fn({error:'failed'});
 		
 		const response = { sidBrowser: session.sidBrowser };
 		if(!proof.accessToken)
 			response.accessToken = session.accessToken;
-		log(session);
+//		log(session);
 		fn(response);
   });
 
+	socket.on('authenticate', function(proof, fn) {
+		log('GOT AUTHENTICATE');
+		log(proof);
+
+		if( proof.credUsed == 'google'){
+			googleIdTokenVerifier.verify(proof.idtoken, config.google.client_id, function(err, tokenInfo){
+				if( err ){
+					log("Got google token verification error");
+					log( err.message );
+					if( err.message == 'Expired idToken' ) return fn({error:'expired'});
+					return fn({error:'invalid'});
+				}
+
+				log("Google token info");
+				//log(tokenInfo);
+
+				const session = getSession( socket.handshake );
+				session.credUsed = 'google';
+				session.credId = tokenInfo.sub;
+				log( session );
+			});
+		}
+	});
+
 });
 
-function getSession( hs, proof ){
+function setSession( hs, proof ){
 	const sid = proof.sidBrowser;
 	if(!sid) return null;
 		
@@ -75,16 +101,13 @@ function getSession( hs, proof ){
 			return null;
 		}
 	} else {
-		const date = new Date();
-		const accessToken = uuid();
-		
 		// Ignore provided accessToken if we do not remember the session
 		delete proof.accessToken;
 
 		sessions[sid] = {
-			date: date,
+			date: Date.now(),
 			sidBrowser: sid,
-			accessToken: accessToken,
+			accessToken: uuid(),
 		};
 	}
 
@@ -93,14 +116,19 @@ function getSession( hs, proof ){
 	//// Update session with stuff...
 	//session.ip = hs.headers['x-forwarded-for'] || hs.address;
 	//session.host = hs.headers.host;
-	session.credId = proof.credId;
-	session.credUsed = proof.credUsed;
+	//session.credId = proof.credId;
+	//session.credUsed = proof.credUsed;
 
 	hs.sidTab = proof.sidTab;
-	log(hs);
+	hs.sidBrowser = sid;
+	//log(hs);
 
 	
 	return session;
+}
+
+function getSession( hs ){
+	return sessions[hs.sidBrowser];
 }
 
 function uuid(){

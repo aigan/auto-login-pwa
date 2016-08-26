@@ -36,6 +36,7 @@ log('google.js');
 					g.ready = true;
 
 					mobx.autorun(g.onUserUpdated);
+					mobx.autorun(g.centralAuthenticate);
 					resolve(); // promise resolved
 				});
 			});
@@ -173,33 +174,37 @@ log('google.js');
 		const g_user = auth2.currentUser.get();
 		const gu = g.google_user();
 
-		gu.updated  = new Date();
-		gu.loggedin = g_user.isSignedIn();
-		gu.id       = g_user.getId();
-		gu.scopes   = g_user.getGrantedScopes();
-		gu.auth     = g_user.getAuthResponse();
-		
-		const g_profile = g_user.getBasicProfile();
-		if( g_profile ) { // Usually disabled. No scope
-			gu.name        = g_profile.getName();
-			gu.name_given  = g_profile.getGivenName();
-			gu.name_family = g_profile.getFamilyName();
-			gu.picture     = g_profile.getImageUrl();
-			gu.email       = g_profile.getEmail();
-		}
+		mobx.transaction(_=>{
+			gu.updated  = new Date();
+			gu.loggedin = g_user.isSignedIn();
+			gu.id       = g_user.getId();
+			gu.scopes   = g_user.getGrantedScopes();
+			gu.auth     = g_user.getAuthResponse();
+			
+			const g_profile = g_user.getBasicProfile();
+			if( g_profile ) { // Usually disabled. No scope
+				gu.name        = g_profile.getName();
+				gu.name_given  = g_profile.getGivenName();
+				gu.name_family = g_profile.getFamilyName();
+				gu.picture     = g_profile.getImageUrl();
+				gu.email       = g_profile.getEmail();
+			}
+		});
 
 		if( gu.loggedin ) {
 			return g.getUserinfo()
 				.then(info => {
-					gu.name           = info.name;
-					gu.name_given     = info.given_name;
-					gu.name_family    = info.family_name;
-					gu.gender         = info.gender;
-					gu.picture        = info.picture;
-					gu.link           = info.link;
-					gu.email          = info.email;
-					gu.email_verified = info.verified_email;
-					delete gu.error;
+					mobx.transaction(_=>{
+						gu.name           = info.name;
+						gu.name_given     = info.given_name;
+						gu.name_family    = info.family_name;
+						gu.gender         = info.gender;
+						gu.picture        = info.picture;
+						gu.link           = info.link;
+						gu.email          = info.email;
+						gu.email_verified = info.verified_email;
+						delete gu.error;
+					});
 				})
 				.catch(err=>{
 					gu.error          = err;
@@ -208,6 +213,28 @@ log('google.js');
 
 		return Promise.resolve();
 	});
+
+	//== REACTION
+	g.centralAuthenticate = function() {
+		log("google central authenticate");
+		if(!state.u.accessToken) return;
+		const gu = g.google_user();
+		if( gu.loggedin && gu.auth.access_token ){
+			log("Send authentication?");
+			log(gu.auth.access_token);
+			alp.supplier.central.authenticate({
+				credUsed: state.u.cred_used,
+				idtoken: gu.auth.id_token,
+			}).then(res => {
+				log("google authenticate resolved");
+			}).catch(err => {
+				log("google authenticate failed");
+				log( err );
+				gu.loggedin = false;
+			});
+		}
+	}
+
 	
 	//== REACTION
 	g.onUserUpdated = function() {
@@ -223,6 +250,8 @@ log('google.js');
 		var pre = query('.user-info .google');
 		var out = "Google:";
 
+		//log(mobx.toJS(gu));
+		
 		var online = gu.loggedin;
 		if( online ){
 			out += " online";
@@ -241,12 +270,14 @@ log('google.js');
 			//								 out += "\n"+scopes;
 		}
 		
+/*
 		var auth = gu.auth;
 		if( auth && online ) {
 			out += "\nIssued at "+new Date(auth.first_issued_at);
 			out += "\nExpires at "+new Date(auth.expires_at);
 			out += "\nExpires in "+Math.round(auth.expires_in/60)+" minutes";
 		}
+*/
 		pre.innerHTML = out +"\n\n";
 
 		if( online ) {

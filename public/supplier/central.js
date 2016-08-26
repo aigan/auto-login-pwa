@@ -4,6 +4,7 @@ log('central.js');
 
 	const c = alp.supplier.central;
 	const state = alp.state;
+	var socket;
 
 	c.exec = function(resolve,reject) {
 		scriptP(config.vendor+"/socket.io/socket.io.js").then(_=>{
@@ -15,13 +16,11 @@ log('central.js');
 			const accessToken = getAccessToken();
 			const u = alp.state.u;
 			
-			var socket = io(); // Connect to same server
+			socket = io(); // Connect to same server
 			socket.emit('hello', {
 				sidTab: sidTab,
 				sidBrowser: sidBrowser,
 				accessToken: accessToken,
-				credId: u.cred_id,
-				credUsed: u.cred_used,
 			}, function(res){
 				log("************ CONNECTED");
 				log(res);
@@ -37,6 +36,18 @@ log('central.js');
 			//};
 		});
 	};
+	
+	c.authenticate = function(data){
+		log("will emit authenticate");
+		return new Promise(function(resolve,reject){
+			socket.emit('authenticate', data, function(res){
+				if( res.error ) return reject(res.error);
+
+				log( res );
+				resolve( res );
+			});
+		});
+	}
 
 	function getTabSessionId() {
 		const ss = window.sessionStorage;
@@ -60,10 +71,11 @@ log('central.js');
 
 	function getAccessToken() {
 		const ss = window.localStorage;
-		return ss.getItem('alp-access-token');
+		return state.u.accessToken = ss.getItem('alp-access-token');
 	}
 
 	function setAccessToken( token ) {
+		state.u.accessToken = token;
 		const ss = window.localStorage;
 		return ss.setItem('alp-access-token', token);
 	}
