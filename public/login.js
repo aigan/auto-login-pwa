@@ -1,5 +1,5 @@
 "use strict";
-log('login');
+//log('login');
 
 const alp = function(){
 	const alpExport = {};
@@ -22,11 +22,10 @@ const alp = function(){
 		// reject handler somhow called twice here
 		then(resolve_in, reject_in) {
 			if(!this.promise) {
-				var sup = this;
-				this.promise = new Promise(function(resolve,reject){
-					scriptP(sup.lib).then(function(){
-						log("Lib %s loaded", sup.origin);
-						sup.exec(resolve,reject);
+				this.promise = new Promise( (resolve,reject) => {
+					scriptP(this.lib).then(() => {
+						log("%s loaded", this.lib);
+						this.exec(resolve,reject);
 					});
 				});
 			}
@@ -55,16 +54,20 @@ const alp = function(){
 			if(!p) p = {};
 			const obj = {
 				loggedin: p.loggedin || false,
-				cred_id: p.cred_id, 
-				cred_used: p.cred_used,
+				loggedout: p.loggedout || null, // explicitly logged out?
+				//cred_id: p.cred_id, 
+				//cred_used: p.cred_used,
 				accessToken: null,
-				supplier: p.supplier || {},
-				//supplier: {},
+				//account: p.account || {},
+				account: {},
+				identity: p.identity || {},
 			};
 
-			for( let sup in supplier ) {
-				obj.supplier[sup] = obj.supplier[sup] || mobx.observable({loggedin:null});
-				//obj.supplier[sup] = mobx.observable({loggedin:null});
+			// TODO: Each account should be an object
+			if( !p.account ) p.account = {};
+			for( let sup in p.account ){
+				log("Should set up " + sup);
+				obj.account[sup] = mobx.observable(p.account[sup]);
 			}
 
 			mobx.extendObservable(this, obj);
@@ -73,13 +76,49 @@ const alp = function(){
 		
 		static load() {
 			const ss = window.localStorage;
-			log(ss.getItem('user'));
+			log("User data");
 			state.u = new User(JSON.parse(ss.getItem('user')));
+			log(mobx.toJS(state.u));
 
 			// Just loading the supplier used for login
-			if( state.u.cred_used )
-				supplier[state.u.cred_used].then();
+			for( let sup of state.u.accounts_used() ) {
+				supplier[sup].then();
+			}
+
+			mobx.autorun(state.u.update);
 		}
+
+		update() {
+			log("main user update");
+
+			//log( JSON.stringify(mobx.toJS(state.u.supplier)) );
+
+			const ss = window.localStorage;
+			const obj = {
+				//cred_id: state.u.cred_id,
+				loggedin: state.u.loggedin,
+				loggedout: state.u.loggedout,
+				//cred_used: state.u.cred_used,
+				//supplier: mobx.toJS(state.u.supplier),
+				account: mobx.toJS(state.u.account),
+				identity: mobx.toJS(state.u.identity),
+			};
+
+			log(obj);
+			ss.setItem('user', JSON.stringify(obj));
+			
+		}
+
+		accounts_used() {
+			return Object.keys( supplier );
+		}
+
+		static forget() {
+			state.u = new User();
+			const ss = window.localStorage;
+			ss.removeItem('user');
+		}
+		
 	}
 
 	////////////////////////////////////////////////////////////
@@ -90,9 +129,10 @@ const alp = function(){
 
 	function considerAutoLogin() {
 		log("consider autoLogin");
+		
 		if( state.u.loggedin ) {
 			notifyStatus("Welcome back");
-		} else if( state.u.cred_id && state.u.cred_used ) {
+		} else if( state.u.loggedout ) {
 			// Identified but logged out. Respect that
 			notifyStatus("");
 
@@ -112,7 +152,9 @@ const alp = function(){
 				});
 			} else {
 				// Load in suppliers
-				supplier[state.u.cred_used].then();
+				for( let sup of state.u.accounts_used() ) {
+					supplier[sup].then();
+				}
 			}
 
 		} else {
@@ -132,6 +174,7 @@ const alp = function(){
 		
 			notifyStatus("Logged out");
 			state.u.loggedin = false;
+			state.u.loggedout = true;
 		});
 	}
 
@@ -144,9 +187,7 @@ const alp = function(){
 			navigator.credentials.requireUserMediation();
 		
 		notifyStatus("Logged out. Remeber to clear your device");
-		state.u = new User();
-		const ss = window.localStorage;
-		ss.removeItem('user');
+		User.forget();
 	}
 
 	function a_login(by_click) {
@@ -156,12 +197,15 @@ const alp = function(){
 		if(!navigator.credentials) {
 			if( state.u.cred_used ) {
 				// supplier loaded by considerAutoLogin()
-					return supplier[state.u.cred_used].login();
+				let sup = state.u.accounts_used()[0];
+				if( sup ) {
+					return supplier[sup].login();
+				}
+
+				return notifyStatus("All previous login methods failed");
 			}
 			
-			notifyStatus("Your browser do not support credentials manager");
-			state.u.cred_used = null;
-			return;
+			return notifyStatus("Your browser do not support credentials manager");
 		}
 
 		if( state.u.cred )
@@ -183,9 +227,7 @@ const alp = function(){
 	function navcredLogin( cred, by_click ) {
 		if( !cred ) {
 			log("No cred");
-			notifyStatus("No login credentials found");
-			state.u.cred_used = null;
-			return;
+			return notifyStatus("No login credentials found");
 		}
 
 		if( cred.type == 'password' ) {
@@ -255,11 +297,12 @@ const alp = function(){
 
 		t_login_alts.style.display = 'block';
 
-		
-		if( state.u.cred_used )
-			query('.login-alternatives').setAttribute('cred_used',state.u.cred_used);
-		fromId('a_login').disabled = !state.u.cred_used;
-		if( !state.u.cred_used ) {
+		const accUsedLen = state.u.accounts_used.length;
+		if( accUsedLen )
+			query('.login-alternatives').setAttribute('acc_used', accUsedLen);
+
+		fromId('a_login').disabled = !accUsedLen;
+		if( !accUsedLen) {
 			fromId('p_login').disabled = !supplier.password.then().ready;
 			fromId('g_login').disabled = !supplier.google.then(null,
 				onGoogleAuthInitFailed).ready;
@@ -271,25 +314,14 @@ const alp = function(){
 		}
 	}
 
-	function userUpdate() {
-		log("main userUpdate");
 
-		//log( JSON.stringify(mobx.toJS(state.u.supplier)) );
-
-		const ss = window.localStorage;
-		ss.setItem('user', JSON.stringify({
-			cred_id: state.u.cred_id,
-			loggedin: state.u.loggedin,
-			cred_used: state.u.cred_used,
-			supplier: mobx.toJS(state.u.supplier),
-		}));
-	}
-
+/*
 	function onUserUpdated() {
 		log("main onUserUpdated");
 		query('.user-info .local').innerHTML =
 		`cred_id: ${state.u.cred_id}\ncred: ${state.u.cred_used}`;
 	}
+*/
 
 	function routeLogin(){
 		if( state.u.loggedin ){
@@ -333,8 +365,6 @@ const alp = function(){
 
 		User.load();
 		
-		mobx.autorun(userUpdate);
-		mobx.autorun(onUserUpdated);
 		mobx.autorun(routeLogin);
 		mobx.autorun(renderLogin);
 		//mobx.spy(log);
@@ -357,6 +387,7 @@ const alp = function(){
 
 		//preload();
 
+		log("login init");
 	}
 
 
@@ -374,4 +405,3 @@ const alp = function(){
 
 }();
 
-log("login init");

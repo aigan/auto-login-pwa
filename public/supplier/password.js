@@ -1,5 +1,4 @@
 "use strict";
-log('password.js');
 {
 	const p = alp.supplier.password;
 	const state = alp.state;
@@ -45,6 +44,8 @@ log('password.js');
 	}
 
 	p.navcredLogin = function(cred, by_click) {
+		return("FIXME");
+		
 		var form = new FormData();
 		form.append('csrf_token', 'maby');
 		cred.additionalData = form;
@@ -57,6 +58,7 @@ log('password.js');
 				log("Auto-Login SUCCESS");
 				alp.notifyStatus("Login success");
 				state.u.loggedin = true;
+				state.u.loggedout = false;
 				state.u.cred_used = 'password';
 				state.u.cred_id = cred.id;
 			} else {
@@ -100,14 +102,27 @@ log('password.js');
 			log("Login SUCCESS");
 			alp.notifyStatus("Login success");
 			state.u.loggedin = true;
-			state.u.cred_used = 'password';
-			state.u.cred_id = cred.id;
+			state.u.loggedout = false;
+
+			const pa = p.password_account(cred.id);
+			//state.u.cred_used = 'password';
+			//state.u.cred_id = cred.id;
 			log("About to update user");
 		}
 		else {
 			log("Login failed");
 			alp.notifyStatus("Login failed");
 		}
+	}
+
+	p.password_account = function(uid) {
+		if(!state.u.account.password) state.u.account.password = {};
+		const pas = state.u.account.password;
+		if(! pas[uid] ){
+			pas[uid] = mobx.observable({initiated:true});
+		}
+
+		return pas[uid];
 	}
 }
 

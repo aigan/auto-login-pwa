@@ -7,7 +7,6 @@ const fromId = document.getElementById.bind(document);
 //var fromClass = document.getElementsByClassName.bind(document);
 //var fromTag = document.getElementsByTagName.bind(document);
 
-log("main");
 
 function importP(url){
 	return new Promise(function(resolve,reject){
@@ -38,3 +37,5 @@ var webComponentsSupported =
 if( !webComponentsSupported ) {
 	scriptP(config.vendor+"/webcomponentsjs/webcomponents-lite.min.js" );
 }
+
+log("main init");

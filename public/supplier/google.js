@@ -1,7 +1,4 @@
 "use strict";
-log('google.js');
-
-
 {
 	const g = alp.supplier.google;
 	const state = alp.state;
@@ -17,7 +14,7 @@ log('google.js');
 
 				// Ask for as little as possible. But we really could
 				// need the gmail address for credentials api
-				//auto-login. We'll ask for email later.
+				// auto-login. We'll ask for email later.
 
 				conf.scope = 'openid';
 				//conf.cookie_policy	= 'none';
@@ -67,12 +64,10 @@ log('google.js');
 			// Best would be to just use the stored info and only ask for
 			// re-login then actually needed, directly on user interaction.
 			
-			const gu = g.google_user();
+			const gu = g.google_account(cred.id);
 			gu.loggedin = false;
-			gu.cred_id = cred.id;
 			state.u.loggedin = true;
-			state.u.cred_id = cred.id;
-			state.u.cred_used = 'google';
+			state.u.loggedout = false;
 
 			alp.notifyStatus("Welcome back");
 			return;
@@ -121,30 +116,30 @@ log('google.js');
 		log("Signed in");
 		alp.notifyStatus("Signed in with Google");
 
-		const u = state.u;
-		const gu = g.google_user();
-		g.pullUserInfo().then(_=>{
+		g.pullUserInfo().then( gu =>{
 
-			const uid = gu.email || gu.id;
-			const name = gu.name;
-			const image = gu.picture;
+			mobx.transaction( _ => {
+				const u = state.u;
+				const credid = gu.email || gu.id;
+				const name = gu.name;
+				const image = gu.picture;
 
-			if(!!navigator.credentials && store_cred ) {
-				// Create `Credential` object for federation
-				const cred = new FederatedCredential({
-					id:				uid,
-					name:			name,
-					iconURL:	 image,
-					provider: g.origin,
-				});
-				navigator.credentials.store(cred);
-
-				gu.cred_id = uid;
-			}
-			
-			u.loggedin = true;
-			u.cred_id = uid;
-			u.cred_used = 'google';
+				if(!!navigator.credentials && store_cred ) {
+					// Create `Credential` object for federation
+					const cred = new FederatedCredential({
+						id:				credid,
+						name:			name,
+						iconURL:	 image,
+						provider: g.origin,
+					});
+					navigator.credentials.store(cred);
+					
+					gu.cred_id = credid;
+				}
+				
+				u.loggedin = true;
+				u.loggedout = false;
+			});
 		});
 	});
 
@@ -170,55 +165,63 @@ log('google.js');
 	g.pullUserInfo = mobx.action(function(update){
 		log("google pullUserInfo");
 
+		
+
 		const auth2 = gapi.auth2.getAuthInstance();
 		const g_user = auth2.currentUser.get();
-		const gu = g.google_user();
+		const uid = g_user.getId();
+		const gu = g.google_account(uid);
 
-		mobx.transaction(_=>{
-			gu.updated  = new Date();
-			gu.loggedin = g_user.isSignedIn();
-			gu.id       = g_user.getId();
-			gu.scopes   = g_user.getGrantedScopes();
-			gu.auth     = g_user.getAuthResponse();
+		gu.updated  = new Date();
+		gu.loggedin = g_user.isSignedIn();
+		gu.id       = uid;
+		gu.scopes   = g_user.getGrantedScopes();
+		gu.auth     = g_user.getAuthResponse();
 			
-			const g_profile = g_user.getBasicProfile();
-			if( g_profile ) { // Usually disabled. No scope
-				gu.name        = g_profile.getName();
-				gu.name_given  = g_profile.getGivenName();
-				gu.name_family = g_profile.getFamilyName();
-				gu.picture     = g_profile.getImageUrl();
-				gu.email       = g_profile.getEmail();
-			}
-		});
-
-		if( gu.loggedin ) {
-			return g.getUserinfo()
-				.then(info => {
-					mobx.transaction(_=>{
-						gu.name           = info.name;
-						gu.name_given     = info.given_name;
-						gu.name_family    = info.family_name;
-						gu.gender         = info.gender;
-						gu.picture        = info.picture;
-						gu.link           = info.link;
-						gu.email          = info.email;
-						gu.email_verified = info.verified_email;
-						delete gu.error;
-					});
-				})
-				.catch(err=>{
-					gu.error          = err;
-				});
+		const g_profile = g_user.getBasicProfile();
+		if( g_profile ) { // Usually disabled. No scope
+			gu.name        = g_profile.getName();
+			gu.name_given  = g_profile.getGivenName();
+			gu.name_family = g_profile.getFamilyName();
+			gu.picture     = g_profile.getImageUrl();
+			gu.email       = g_profile.getEmail();
 		}
 
-		return Promise.resolve();
+		if( gu.loggedin ) {
+			return new Promise(function(resolve,reject){
+				g.getUserinfo()
+					.then(info => {
+						mobx.transaction(_=>{
+							log("oauth2 response");
+							log(info);
+							gu.name           = info.name;
+							gu.name_given     = info.given_name;
+							gu.name_family    = info.family_name;
+							gu.gender         = info.gender;
+							gu.picture        = info.picture;
+							gu.link           = info.link;
+							gu.email          = info.email;
+							gu.email_verified = info.verified_email;
+							delete gu.error;
+						});
+						return resolve(gu);
+					})
+					.catch(err=>{
+						gu.error          = err;
+						return reject(gu);
+					});
+			});
+		}
+
+		return Promise.resolve(gu);
 	});
 
 	//== REACTION
 	g.centralAuthenticate = function() {
 		log("google central authenticate");
 		if(!state.u.accessToken) return;
-		const gu = g.google_user();
+		
+		const gu = g.google_account( current_guid() );
 		if( gu.loggedin && gu.auth.access_token ){
 			log("Send authentication?");
 			log(gu.auth.access_token);
@@ -241,7 +244,7 @@ log('google.js');
 		log("google onUserUpdated");
 		
 		if( !g.ready ) return;
-		const gu = g.google_user();
+		const gu = g.google_account( current_guid() );
 
 		// For action callbacks on THIS user
 		const auth2 = gapi.auth2.getAuthInstance();
@@ -350,7 +353,7 @@ log('google.js');
 					console.log('User signed out from Google');
 					// Only effective with auth2.signIn({prompt:'select_account'})
 					auth2.disconnect();
-					state.u.supplier.google.loggedin = false;
+					state.u.account.google = {};
 				});
 			}
 		}
@@ -358,11 +361,17 @@ log('google.js');
 
 	g.logout = g.forget;
 
-	g.google_user = function() {
+	g.google_account = function(uid) {
+		if(!state.u.account.google) state.u.account.google = {};
+		const gas = state.u.account.google;
+		log("Get google account " + uid);
+		if( uid === undefined ){
+			throw(new Error("uid missing"));
+			//log(err.stack);
+		}
 		
-		if( ! state.u.supplier.google.initiated ){
-			log("Extending google_user");
-			mobx.extendObservable( state.u.supplier.google, {
+		if(! gas[uid] ){
+			gas[uid] = mobx.observable({
 				cred_id: null,
 				email: null,
 				id: null,
@@ -381,8 +390,14 @@ log('google.js');
 			});
 		}
 
-		return state.u.supplier.google;
+		return gas[uid];
 	}
 
+	function current_guid(){
+		const auth2 = gapi.auth2.getAuthInstance();
+		const g_user = auth2.currentUser.get();
+		return g_user.getId();
+	}
+	
 }
 log("google.js init");
